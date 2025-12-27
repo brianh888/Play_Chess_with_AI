@@ -4,26 +4,37 @@ import React from 'react';
 export const COLUMNS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 export const ROWS = ['8', '7', '6', '5', '4', '3', '2', '1'];
 
-// Modern Staunton Style Pieces
-// Fix: Use optional children in the prop type to resolve TS errors when passed via JSX content
 const PieceBase = ({ color, children, id }: { color: 'w' | 'b', children?: React.ReactNode, id: string }) => (
-  <svg viewBox="0 0 45 45" className="w-full h-full drop-shadow-md">
+  <svg viewBox="0 0 45 45" className="w-full h-full">
     <defs>
       <linearGradient id={`grad-${id}`} x1="0%" x2="100%" y1="0%" y2="100%">
         {color === 'w' ? (
           <>
             <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="100%" stopColor="#cbd5e1" />
+            <stop offset="60%" stopColor="#f8fafc" />
+            <stop offset="100%" stopColor="#94a3b8" />
           </>
         ) : (
           <>
-            <stop offset="0%" stopColor="#475569" />
-            <stop offset="100%" stopColor="#0f172a" />
+            <stop offset="0%" stopColor="#64748b" />
+            <stop offset="40%" stopColor="#1e293b" />
+            <stop offset="100%" stopColor="#020617" />
           </>
         )}
       </linearGradient>
+      <filter id={`glow-${id}`}>
+        <feGaussianBlur stdDeviation="0.5" result="blur" />
+        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      </filter>
     </defs>
-    <g fill={`url(#grad-${id})`} stroke={color === 'w' ? '#475569' : '#f8fafc'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <g 
+      fill={`url(#grad-${id})`} 
+      stroke={color === 'w' ? '#64748b' : '#94a3b8'} 
+      strokeWidth="1.2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+      style={{ filter: `url(#glow-${id})` }}
+    >
       {children}
     </g>
   </svg>

@@ -10,28 +10,68 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
+            background-color: #020617;
             color: #f8fafc;
             overflow-x: hidden;
+            background-image: radial-gradient(circle at 50% 50%, #1e293b 0%, #020617 100%);
         }
-        .chess-square-white { background-color: #e2e8f0; }
-        .chess-square-black { background-color: #475569; }
+        .chess-square-white { background-color: #f1f5f9; }
+        .chess-square-black { background-color: #334155; }
+        
         .piece-shadow {
-            filter: drop-shadow(0 4px 3px rgb(0 0 0 / 0.4));
+            filter: drop-shadow(0 6px 4px rgb(0 0 0 / 0.5));
+            transition: filter 0.2s ease;
         }
+        
         .piece-3d {
-            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 10;
         }
-        .piece-3d:active {
-            transform: scale(1.1) translateY(-8px);
+        
+        .piece-3d:hover {
+            transform: translateY(-6px) scale(1.05);
+            filter: drop-shadow(0 12px 8px rgb(0 0 0 / 0.6));
             z-index: 50;
         }
-        .board-container {
-            perspective: 1000px;
+
+        .piece-3d:active {
+            transform: translateY(-12px) scale(1.15);
+            z-index: 100;
         }
+
+        .board-container {
+            perspective: 1200px;
+        }
+        
         .board-inner {
-            transform: rotateX(10deg);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: rotateX(12deg);
+            box-shadow: 
+                0 0 0 12px #1e293b,
+                0 30px 60px -12px rgba(0, 0, 0, 0.7),
+                0 18px 36px -18px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        /* Subtle glowing effect for suggested moves */
+        .suggested-glow {
+            box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.4);
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { border-color: rgba(16, 185, 129, 0.2); }
+            50% { border-color: rgba(16, 185, 129, 0.8); }
+            100% { border-color: rgba(16, 185, 129, 0.2); }
+        }
+
+        .animate-spin-slow {
+            animation: spin 3s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
     </style>
 <script type="importmap">

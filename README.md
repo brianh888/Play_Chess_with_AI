@@ -1,20 +1,63 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
 
-# Run and deploy your AI Studio app
+# Grandmaster AI Chess ♟️
 
-This contains everything you need to run your app locally.
+A sophisticated 3D-styled chess experience featuring drag-and-drop mechanics and an advanced AI opponent powered by **Google Gemini**.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1DCHmA5HovTEHG44pRB9k7hkaucvTmhf_
+![Chess Board](https://images.unsplash.com/photo-1529699211952-734e80c4d42b?q=80&w=2071&auto=format&fit=crop)
 
-## Run Locally
+## Features
 
-**Prerequisites:**  Node.js
+- **Gemini Powered AI**: Play against an AI that adapts its strategy based on board state.
+- **3D Visuals**: Custom CSS-based 3D piece rendering and board perspective.
+- **AI Advisor**: Ask the Grandmaster for tactical advice and move explanations during your turn.
+- **Move History**: Full standard algebraic notation ledger.
+- **Responsive Design**: Works on desktop and tablets.
 
+## Prerequisites
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- Node.js (v18 or higher)
+- A Google Cloud / AI Studio API Key with access to `gemini-3-flash-preview`.
+
+## Installation & Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/grandmaster-ai-chess.git
+   cd grandmaster-ai-chess
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure API Key**
+   
+   *   Rename the `.env.example` file to `.env`.
+   *   Open `.env` and paste your Gemini API Key.
+   
+   ```env
+   API_KEY=AIzaSy...YourKeyHere
+   ```
+   
+   > **Note:** The API key is never sent to a backend server (other than Google's API) but it is exposed in the client-side build. Do not host this publicly without adding backend proxy protection if you are worried about quota theft.
+
+4. **Run the game**
+   ```bash
+   npm run dev
+   ```
+
+5. Open your browser to `http://localhost:5173`.
+
+## Technologies
+
+- React 19
+- TypeScript
+- Vite
+- Google GenAI SDK
+- Chess.js (Logic)
+- TailwindCSS (Styling)
+
+## License
+
+MIT

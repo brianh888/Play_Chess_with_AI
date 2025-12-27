@@ -23,24 +23,24 @@ export const getGeminiMove = async (fen: string, difficulty: Difficulty, retryCo
   const isGrandmaster = difficulty === Difficulty.GRANDMASTER;
   const model = isGrandmaster ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
 
-  const systemInstructions = `You are a professional chess engine. 
-    Analyze the FEN and provide the best move for the current turn.
-    Difficulty Level: ${difficulty}.
-    Respond ONLY with the move in Standard Algebraic Notation (SAN) format (e.g., "e4", "Nf3", "O-O"). 
-    NO conversational text. NO explanation.`;
+  // Optimized instructions for speed (less tokens to process)
+  const systemInstructions = `You are a chess engine. 
+    Difficulty: ${difficulty}.
+    Analyze FEN: ${fen}
+    Return ONLY the best move in SAN format (e.g. "e4"). No text.`;
 
   try {
-    // 2. Strict 20-second timeout wrapper
+    // 2. Strict 10-second timeout wrapper (Reduced from 20s)
     const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error("TIMEOUT")), 20000)
+      setTimeout(() => reject(new Error("TIMEOUT")), 10000)
     );
 
     const apiPromise = ai.models.generateContent({
       model: model,
-      contents: `Current board position in FEN: ${fen}`,
+      contents: `FEN: ${fen}`,
       config: {
         systemInstruction: systemInstructions,
-        temperature: isGrandmaster ? 0.1 : 0.7,
+        temperature: isGrandmaster ? 0.1 : 0.5,
       },
     });
 
@@ -66,8 +66,8 @@ export const getGeminiMove = async (fen: string, difficulty: Difficulty, retryCo
 
     // 4. Retry logic for Rate Limits (429)
     if (error.message?.includes("429") && retryCount < 3) {
-      console.warn(`Rate limit hit. Retrying in ${(retryCount + 1) * 2} seconds...`);
-      await delay(2000 * (retryCount + 1)); // Wait 2s, then 4s, then 6s
+      console.warn(`Rate limit hit. Retrying in ${(retryCount + 1) * 1} seconds...`); // Faster retry
+      await delay(1000 * (retryCount + 1)); 
       return getGeminiMove(fen, difficulty, retryCount + 1);
     }
 

@@ -5,7 +5,7 @@ import { getGeminiMove, getGeminiAdvice } from './services/geminiService';
 import { PieceColor, Advice } from './types';
 import Board from './components/Board';
 import Showcase from './components/Showcase';
-import { Trophy, RotateCcw, Settings, BrainCircuit, User, Lightbulb, Sparkles, Loader2, Undo2, Presentation, AlertCircle, RefreshCw } from 'lucide-react';
+import { Trophy, RotateCcw, Settings, BrainCircuit, Lightbulb, Sparkles, Loader2, Undo2, Presentation, AlertCircle, RefreshCw } from 'lucide-react';
 
 const App: React.FC = () => {
   const [game, setGame] = useState(new ChessLogic());
@@ -17,56 +17,47 @@ const App: React.FC = () => {
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [showShowcase, setShowShowcase] = useState(false);
   
-  const aiMoveAttemptRef = useRef<number>(0);
-  const isAiRequestInProgress = useRef<boolean>(false);
-  const [tick, setTick] = useState(0);
-
-  const forceUpdate = useCallback(() => {
-    setTick(t => t + 1);
-    setAdvice(null);
-  }, []);
+  // Use a ref for the move count to trigger AI without relying on complex state watchers
+  const [moveCount, setMoveCount] = useState(0);
+  const aiProcessingRef = useRef(false);
 
   const handleAiMove = useCallback(async () => {
-    if (isAiRequestInProgress.current || game.isGameOver()) return;
+    if (aiProcessingRef.current || game.isGameOver()) return;
     
-    isAiRequestInProgress.current = true;
+    aiProcessingRef.current = true;
     setIsAiThinking(true);
     setError(null);
-    const currentAttempt = ++aiMoveAttemptRef.current;
 
     try {
-      const moveSan = await getGeminiMove(game.getFen());
+      const fen = game.getFen();
+      const moveSan = await getGeminiMove(fen);
       
-      // If a newer attempt or reset has occurred, ignore this result
-      if (currentAttempt !== aiMoveAttemptRef.current) return;
-
       const moveResult = game.makeMove(moveSan);
       
       if (!moveResult) {
-        // Fallback to legal move if AI returns invalid notation
+        // Fallback: If AI provides invalid notation, pick the first legal move
+        // to ensure the game doesn't get stuck in a loop
         const legalMoves = game.getLegalMoves();
         if (legalMoves.length > 0) {
           game.makeMove(legalMoves[0]);
         }
       }
-      forceUpdate();
+      
+      setMoveCount(prev => prev + 1);
+      setAdvice(null);
     } catch (err: any) {
       console.error("AI Move failed", err);
       const errMsg = err.message || "";
-      const upperMsg = errMsg.toUpperCase();
-      
-      if (upperMsg.includes("API_KEY") || upperMsg.includes("KEY") || upperMsg.includes("401")) {
-        setError("API Key Error: Please check your local .env configuration.");
-      } else if (upperMsg.includes("429")) {
+      if (errMsg.includes("429")) {
         setError("Rate limit exceeded. Please wait a moment before retrying.");
       } else {
-        setError(`Connection Error: ${errMsg || "The AI strategist is currently unreachable."}`);
+        setError("The AI strategist is currently unreachable.");
       }
     } finally {
       setIsAiThinking(false);
-      isAiRequestInProgress.current = false;
+      aiProcessingRef.current = false;
     }
-  }, [game, forceUpdate]);
+  }, [game]);
 
   const handleGetAdvice = async () => {
     if (isFetchingAdvice || isAiThinking || game.isGameOver()) return;
@@ -83,54 +74,50 @@ const App: React.FC = () => {
       }
       setAdvice(hint);
     } catch (err: any) {
-      setError("Strategy engine is offline. Check your credentials.");
+      setError("Strategic advice is unavailable right now.");
     } finally {
       setIsFetchingAdvice(false);
     }
   };
 
   useEffect(() => {
-    // If there is an active error, stop the automatic AI loop to prevent flickering/spamming
-    if (!isGameStarted || error) return; 
+    if (!isGameStarted || error || isAiThinking) return; 
     
     const isAiTurn = game.getTurn() !== playerColor;
-    if (isAiTurn && !game.isGameOver() && !isAiThinking && !isAiRequestInProgress.current) {
-      // Increased delay to 1s to respect API rate limits better
-      const timer = setTimeout(() => handleAiMove(), 1000);
+    if (isAiTurn && !game.isGameOver()) {
+      const timer = setTimeout(() => handleAiMove(), 1200);
       return () => clearTimeout(timer);
     }
-  }, [tick, playerColor, isGameStarted, isAiThinking, game, handleAiMove, error]);
+  }, [moveCount, playerColor, isGameStarted, error, isAiThinking, game, handleAiMove]);
 
   const onPlayerMove = (from: string, to: string) => {
     if (isAiThinking || game.isGameOver()) return;
     const move = game.makeMove({ from, to, promotion: 'q' });
     if (move) {
-      forceUpdate();
+      setMoveCount(prev => prev + 1);
+      setAdvice(null);
+      setError(null);
     }
   };
 
   const handleUndo = () => {
     if (isAiThinking) return;
-    const turn = game.getTurn();
-    if (turn !== playerColor) {
-      game.undo();
-    } else {
-      game.undo();
+    game.undo();
+    if (game.getTurn() !== playerColor) {
       game.undo();
     }
-    setError(null); 
-    forceUpdate();
+    setError(null);
+    setMoveCount(prev => prev + 1);
   };
 
   const resetGame = () => {
-    aiMoveAttemptRef.current++; // Invalidate any pending AI moves
-    isAiRequestInProgress.current = false;
     game.reset();
     setIsGameStarted(true);
     setError(null);
     setIsAiThinking(false);
     setAdvice(null);
-    forceUpdate();
+    setMoveCount(0);
+    aiProcessingRef.current = false;
   };
 
   if (!isGameStarted) {
@@ -138,7 +125,7 @@ const App: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-slate-900 p-6 text-slate-100">
         <div className="bg-slate-800/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl max-w-md w-full border border-slate-700/50 text-center">
           <h1 className="text-5xl font-black mb-6 tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Gemini Chess</h1>
-          <p className="text-slate-400 mb-10 text-lg">Challenge a world-class AI in a premium 3D chess arena.</p>
+          <p className="text-slate-400 mb-10 text-lg">Experience high-performance chess powered by Gemini Flash.</p>
           
           <div className="space-y-4 mb-10">
             <div className="flex justify-between items-center p-5 bg-slate-700/50 rounded-2xl border border-white/5">
@@ -162,10 +149,7 @@ const App: React.FC = () => {
 
           <div className="flex flex-col gap-4">
             <button 
-              onClick={() => {
-                setIsGameStarted(true);
-                forceUpdate();
-              }}
+              onClick={() => setIsGameStarted(true)}
               className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-xl shadow-xl shadow-emerald-500/20 transition-all active:scale-95"
             >
               Enter Arena
@@ -249,8 +233,8 @@ const App: React.FC = () => {
       {/* Main: Chess Board */}
       <div className="flex-1 flex flex-col items-center justify-center order-1 lg:order-2 w-full max-w-[650px]">
         {isGameOver && (
-          <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-2xl flex items-center justify-center p-6 animate-in fade-in duration-500">
-            <div className="bg-[#1e293b] p-12 rounded-[48px] border border-white/10 shadow-3xl text-center max-w-md w-full scale-in-center">
+          <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-2xl flex items-center justify-center p-6">
+            <div className="bg-[#1e293b] p-12 rounded-[48px] border border-white/10 shadow-3xl text-center max-w-md w-full animate-in zoom-in duration-300">
               <div className="bg-yellow-500/20 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 border border-yellow-500/30">
                 <Trophy size={48} className="text-yellow-500" />
               </div>
@@ -284,9 +268,8 @@ const App: React.FC = () => {
                 <p className="text-center text-sm font-medium leading-relaxed text-red-100/80">
                   {error}
                 </p>
-                {/* Fixed: only clearing error state. The useEffect will automatically re-trigger handleAiMove if turn requires it. */}
                 <button 
-                  onClick={() => setError(null)}
+                  onClick={() => { setError(null); setMoveCount(prev => prev + 1); }}
                   className="flex items-center gap-2.5 px-6 py-2 bg-red-500 hover:bg-red-600 rounded-xl text-sm font-black text-white transition-all active:scale-95 shadow-lg shadow-red-500/30"
                 >
                   <RefreshCw size={16} /> Re-establish Link

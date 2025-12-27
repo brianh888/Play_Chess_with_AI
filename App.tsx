@@ -18,7 +18,8 @@ const App: React.FC = () => {
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [showShowcase, setShowShowcase] = useState(false);
   
-  const aiMoveAttemptRef = useRef<number>(0);
+  // Guard to prevent double-calling AI for the same board state
+  const processingFenRef = useRef<string>("");
   const [tick, setTick] = useState(0);
 
   const forceUpdate = useCallback(() => {
@@ -27,17 +28,19 @@ const App: React.FC = () => {
   }, []);
 
   const handleAiMove = useCallback(async () => {
-    if (isAiThinking || game.isGameOver()) return;
+    const currentFen = game.getFen();
+
+    // STRICT GUARD: If we are already processing this EXACT board state, do not fire again.
+    // This prevents React Strict Mode from triggering two API calls.
+    if (isAiThinking || game.isGameOver() || processingFenRef.current === currentFen) return;
     
     setIsAiThinking(true);
     setError(null);
-    const currentAttempt = ++aiMoveAttemptRef.current;
+    processingFenRef.current = currentFen; // Lock this FEN
 
     try {
-      const moveSan = await getGeminiMove(game.getFen(), difficulty);
+      const moveSan = await getGeminiMove(currentFen, difficulty);
       
-      if (currentAttempt !== aiMoveAttemptRef.current) return;
-
       const moveResult = game.makeMove(moveSan);
       
       if (!moveResult) {
@@ -50,13 +53,16 @@ const App: React.FC = () => {
       forceUpdate();
     } catch (err: any) {
       console.error("AI Move failed", err);
+      // If failed, clear the lock so the user can retry manually
+      processingFenRef.current = "";
+
       const errMsg = err.message || "";
       const upperMsg = errMsg.toUpperCase();
       
       if (upperMsg.includes("API_KEY") || upperMsg.includes("KEY") || upperMsg.includes("401")) {
         setError("API Key Error: Please check your local .env configuration.");
       } else if (upperMsg.includes("429")) {
-        setError("Rate limit exceeded. Please try again in a moment.");
+        setError("Rate limit exceeded. Please wait a moment before retrying.");
       } else {
         setError(`Connection Error: ${errMsg || "The AI strategist is currently unreachable."}`);
       }
@@ -91,6 +97,7 @@ const App: React.FC = () => {
     
     const isAiTurn = game.getTurn() !== playerColor;
     if (isAiTurn && !game.isGameOver() && !isAiThinking) {
+      // Small delay for UX, but the Ref guard in handleAiMove prevents double execution
       const timer = setTimeout(() => handleAiMove(), 500);
       return () => clearTimeout(timer);
     }
@@ -113,6 +120,8 @@ const App: React.FC = () => {
       game.undo();
       game.undo();
     }
+    // Clear the lock so AI can play this turn again if we undid to it
+    processingFenRef.current = ""; 
     forceUpdate();
   };
 
@@ -122,6 +131,7 @@ const App: React.FC = () => {
     setError(null);
     setIsAiThinking(false);
     setAdvice(null);
+    processingFenRef.current = ""; // Clear lock
     forceUpdate();
   };
 
@@ -292,7 +302,10 @@ const App: React.FC = () => {
                   {error}
                 </p>
                 <button 
-                  onClick={() => handleAiMove()}
+                  onClick={() => {
+                    processingFenRef.current = ""; // Unlock to retry
+                    handleAiMove();
+                  }}
                   className="flex items-center gap-2.5 px-6 py-2 bg-red-500 hover:bg-red-600 rounded-xl text-sm font-black text-white transition-all active:scale-95 shadow-lg shadow-red-500/30"
                 >
                   <RefreshCw size={16} /> Re-establish Link

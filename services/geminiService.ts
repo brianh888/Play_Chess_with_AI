@@ -6,11 +6,21 @@ import { Difficulty, Advice } from "../types";
  * Service to interact with Google Gemini API for chess move generation and advice.
  */
 
-export const getGeminiMove = async (fen: string, difficulty: Difficulty): Promise<string> => {
+// Cache to store moves we've already calculated to save API calls
+const moveCache = new Map<string, string>();
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export const getGeminiMove = async (fen: string, difficulty: Difficulty, retryCount = 0): Promise<string> => {
+  // 1. Check Cache first
+  const cacheKey = `${fen}-${difficulty}`;
+  if (moveCache.has(cacheKey)) {
+    return moveCache.get(cacheKey)!;
+  }
+
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const isGrandmaster = difficulty === Difficulty.GRANDMASTER;
-  // Use pro for complex reasoning, flash for basic levels
   const model = isGrandmaster ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
 
   const systemInstructions = `You are a professional chess engine. 
@@ -30,10 +40,23 @@ export const getGeminiMove = async (fen: string, difficulty: Difficulty): Promis
     });
 
     const text = (response.text || "").trim();
-    // Use regex to pull out likely move notation from any accidental chat text
     const moveMatch = text.match(/[a-hNRBQKx1-8+#=O-]+/);
-    return moveMatch ? moveMatch[0] : text;
+    const result = moveMatch ? moveMatch[0] : text;
+
+    // 2. Save to cache if valid
+    if (result) {
+      moveCache.set(cacheKey, result);
+    }
+    return result;
+
   } catch (error: any) {
+    // 3. Retry logic for Rate Limits (429)
+    if (error.message?.includes("429") && retryCount < 3) {
+      console.warn(`Rate limit hit. Retrying in ${(retryCount + 1) * 2} seconds...`);
+      await delay(2000 * (retryCount + 1)); // Wait 2s, then 4s, then 6s
+      return getGeminiMove(fen, difficulty, retryCount + 1);
+    }
+
     console.error("Gemini Move Error:", error);
     throw error;
   }

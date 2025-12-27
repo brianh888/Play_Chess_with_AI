@@ -1,27 +1,21 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Advice } from "../types";
+import { Difficulty, Advice } from "../types";
 
 /**
  * Service to interact with Google Gemini API for chess move generation and advice.
- * Includes local caching and retry logic to mitigate rate limiting.
  */
 
-const moveCache = new Map<string, string>();
-const adviceCache = new Map<string, Advice>();
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-export const getGeminiMove = async (fen: string, retries = 2): Promise<string> => {
-  if (moveCache.has(fen)) {
-    return moveCache.get(fen)!;
-  }
-
+export const getGeminiMove = async (fen: string, difficulty: Difficulty): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const model = 'gemini-3-flash-preview';
+  
+  const isGrandmaster = difficulty === Difficulty.GRANDMASTER;
+  // Use pro for complex reasoning, flash for basic levels
+  const model = isGrandmaster ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
 
   const systemInstructions = `You are a professional chess engine. 
     Analyze the FEN and provide the best move for the current turn.
+    Difficulty Level: ${difficulty}.
     Respond ONLY with the move in Standard Algebraic Notation (SAN) format (e.g., "e4", "Nf3", "O-O"). 
     NO conversational text. NO explanation.`;
 
@@ -31,34 +25,21 @@ export const getGeminiMove = async (fen: string, retries = 2): Promise<string> =
       contents: `Current board position in FEN: ${fen}`,
       config: {
         systemInstruction: systemInstructions,
-        temperature: 0.1,
-        thinkingConfig: { thinkingBudget: 0 } // Disable thinking to save tokens and speed up response
+        temperature: isGrandmaster ? 0.1 : 0.7,
       },
     });
 
     const text = (response.text || "").trim();
+    // Use regex to pull out likely move notation from any accidental chat text
     const moveMatch = text.match(/[a-hNRBQKx1-8+#=O-]+/);
-    const move = moveMatch ? moveMatch[0] : text;
-    
-    if (move && move.length > 0) {
-      moveCache.set(fen, move);
-    }
-    return move;
+    return moveMatch ? moveMatch[0] : text;
   } catch (error: any) {
-    if (retries > 0 && error.message?.includes("429")) {
-      await delay(2000 * (3 - retries)); // Exponential backoff
-      return getGeminiMove(fen, retries - 1);
-    }
     console.error("Gemini Move Error:", error);
     throw error;
   }
 };
 
-export const getGeminiAdvice = async (fen: string, retries = 1): Promise<Advice> => {
-  if (adviceCache.has(fen)) {
-    return adviceCache.get(fen)!;
-  }
-
+export const getGeminiAdvice = async (fen: string): Promise<Advice> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   try {
@@ -83,21 +64,12 @@ export const getGeminiAdvice = async (fen: string, retries = 1): Promise<Advice>
             }
           },
           required: ["move", "explanation"]
-        },
-        thinkingConfig: { thinkingBudget: 0 }
+        }
       },
     });
 
-    const advice: Advice = JSON.parse(response.text || "{}");
-    if (advice.move) {
-      adviceCache.set(fen, advice);
-    }
-    return advice;
+    return JSON.parse(response.text || "{}");
   } catch (error: any) {
-    if (retries > 0 && error.message?.includes("429")) {
-      await delay(1500);
-      return getGeminiAdvice(fen, retries - 1);
-    }
     console.error("Gemini Advice Error:", error);
     throw error;
   }

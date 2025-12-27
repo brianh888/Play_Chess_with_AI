@@ -60,12 +60,8 @@ const App: React.FC = () => {
         const randomMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
         game.makeMove(randomMove);
         
-        // Inform the user what happened
-        if (err.message === "TIMEOUT") {
-          setError("AI took too long. Played a fallback move.");
-        } else {
-          setError("AI Connection unstable. Played a fallback move.");
-        }
+        // Suppress UI error for fallback moves to keep interface clean
+        console.warn("AI Timeout/Error. Played fallback move silently.");
         forceUpdate();
       } else {
         // This usually means Checkmate or Stalemate was reached during thinking

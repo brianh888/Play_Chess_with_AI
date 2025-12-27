@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChessLogic } from './services/chessLogic';
 import { getGeminiMove, getGeminiAdvice } from './services/geminiService';
-import { Difficulty, PieceColor, Advice } from './types';
+import { PieceColor, Advice } from './types';
 import Board from './components/Board';
 import Showcase from './components/Showcase';
 import { Trophy, RotateCcw, Settings, BrainCircuit, User, Lightbulb, Sparkles, Loader2, Undo2, Presentation, AlertCircle, RefreshCw } from 'lucide-react';
@@ -10,7 +10,6 @@ import { Trophy, RotateCcw, Settings, BrainCircuit, User, Lightbulb, Sparkles, L
 const App: React.FC = () => {
   const [game, setGame] = useState(new ChessLogic());
   const [playerColor, setPlayerColor] = useState<PieceColor>('w');
-  const [difficulty, setDifficulty] = useState<Difficulty>(Difficulty.BEGINNER);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [isFetchingAdvice, setIsFetchingAdvice] = useState(false);
   const [advice, setAdvice] = useState<Advice | null>(null);
@@ -34,7 +33,7 @@ const App: React.FC = () => {
     const currentAttempt = ++aiMoveAttemptRef.current;
 
     try {
-      const moveSan = await getGeminiMove(game.getFen(), difficulty);
+      const moveSan = await getGeminiMove(game.getFen());
       
       if (currentAttempt !== aiMoveAttemptRef.current) return;
 
@@ -56,14 +55,14 @@ const App: React.FC = () => {
       if (upperMsg.includes("API_KEY") || upperMsg.includes("KEY") || upperMsg.includes("401")) {
         setError("API Key Error: Please check your local .env configuration.");
       } else if (upperMsg.includes("429")) {
-        setError("Rate limit exceeded. Please try again in a moment.");
+        setError("Rate limit exceeded. Please wait a moment before retrying.");
       } else {
         setError(`Connection Error: ${errMsg || "The AI strategist is currently unreachable."}`);
       }
     } finally {
       setIsAiThinking(false);
     }
-  }, [game, difficulty, isAiThinking, forceUpdate]);
+  }, [game, isAiThinking, forceUpdate]);
 
   const handleGetAdvice = async () => {
     if (isFetchingAdvice || isAiThinking || game.isGameOver()) return;
@@ -87,14 +86,14 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!isGameStarted) return;
+    if (!isGameStarted || error) return; // Prevent loop flickering if there is an error
     
     const isAiTurn = game.getTurn() !== playerColor;
     if (isAiTurn && !game.isGameOver() && !isAiThinking) {
       const timer = setTimeout(() => handleAiMove(), 500);
       return () => clearTimeout(timer);
     }
-  }, [tick, playerColor, isGameStarted, isAiThinking, game, handleAiMove]);
+  }, [tick, playerColor, isGameStarted, isAiThinking, game, handleAiMove, error]);
 
   const onPlayerMove = (from: string, to: string) => {
     if (isAiThinking || game.isGameOver()) return;
@@ -113,6 +112,7 @@ const App: React.FC = () => {
       game.undo();
       game.undo();
     }
+    setError(null); // Clear errors on undo to allow retry
     forceUpdate();
   };
 
@@ -125,15 +125,11 @@ const App: React.FC = () => {
     forceUpdate();
   };
 
-  const toggleDifficulty = () => {
-    setDifficulty(prev => prev === Difficulty.BEGINNER ? Difficulty.GRANDMASTER : Difficulty.BEGINNER);
-  };
-
   if (!isGameStarted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 p-6 text-slate-100">
         <div className="bg-slate-800/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl max-w-md w-full border border-slate-700/50 text-center">
-          <h1 className="text-5xl font-black mb-6 tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Grandmaster AI</h1>
+          <h1 className="text-5xl font-black mb-6 tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Gemini Chess</h1>
           <p className="text-slate-400 mb-10 text-lg">Challenge a world-class AI in a premium 3D chess arena.</p>
           
           <div className="space-y-4 mb-10">
@@ -153,17 +149,6 @@ const App: React.FC = () => {
                   Black
                 </button>
               </div>
-            </div>
-
-            <div className="flex justify-between items-center p-5 bg-slate-700/50 rounded-2xl border border-white/5">
-              <span className="text-slate-200 font-bold">Challenge Level</span>
-              <button 
-                onClick={toggleDifficulty}
-                className="flex items-center gap-2.5 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-indigo-500/20 font-bold"
-              >
-                {difficulty === Difficulty.BEGINNER ? <User size={20} /> : <BrainCircuit size={20} />}
-                {difficulty}
-              </button>
             </div>
           </div>
 
@@ -216,8 +201,8 @@ const App: React.FC = () => {
             </div>
             
             <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl">
-              <span className="text-slate-400 font-medium">AI Level</span>
-              <span className="text-indigo-400 font-black">{difficulty}</span>
+              <span className="text-slate-400 font-medium">AI Player</span>
+              <span className="text-indigo-400 font-black">Active</span>
             </div>
 
             {isAiThinking && (
@@ -286,13 +271,13 @@ const App: React.FC = () => {
               <div className="flex flex-col items-center gap-4 bg-red-500/10 py-6 px-8 rounded-3xl border border-red-500/30 backdrop-blur-md shadow-2xl max-w-md mx-auto">
                 <div className="flex items-center gap-3 text-red-400 font-black text-lg">
                   <AlertCircle size={24} />
-                  <span>Connection Difficulty</span>
+                  <span>Connection Issue</span>
                 </div>
                 <p className="text-center text-sm font-medium leading-relaxed text-red-100/80">
                   {error}
                 </p>
                 <button 
-                  onClick={() => handleAiMove()}
+                  onClick={() => { setError(null); handleAiMove(); }}
                   className="flex items-center gap-2.5 px-6 py-2 bg-red-500 hover:bg-red-600 rounded-xl text-sm font-black text-white transition-all active:scale-95 shadow-lg shadow-red-500/30"
                 >
                   <RefreshCw size={16} /> Re-establish Link
@@ -357,12 +342,9 @@ const App: React.FC = () => {
                 <RotateCcw size={20} /> Reset
               </button>
             </div>
-            <button 
-              onClick={toggleDifficulty}
-              className="w-full py-4 bg-indigo-900/40 border border-indigo-500/40 text-indigo-100 rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-indigo-900/60 transition-all shadow-lg"
-            >
-              <BrainCircuit size={20} /> Mode: {difficulty}
-            </button>
+            <div className="w-full py-4 bg-indigo-900/20 border border-indigo-500/20 text-indigo-100/60 rounded-2xl font-black flex items-center justify-center gap-3 cursor-default">
+              <BrainCircuit size={20} /> Optimized Engine
+            </div>
           </div>
         </div>
       </div>

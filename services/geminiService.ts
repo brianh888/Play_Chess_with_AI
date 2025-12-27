@@ -1,21 +1,20 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Difficulty, Advice } from "../types";
+import { Advice } from "../types";
 
 /**
  * Service to interact with Google Gemini API for chess move generation and advice.
  */
 
-export const getGeminiMove = async (fen: string, difficulty: Difficulty): Promise<string> => {
+export const getGeminiMove = async (fen: string): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const isGrandmaster = difficulty === Difficulty.GRANDMASTER;
-  // Use pro for complex reasoning, flash for basic levels
-  const model = isGrandmaster ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+  // Use flash for fast, reliable response times and higher rate limits
+  const model = 'gemini-3-flash-preview';
 
   const systemInstructions = `You are a professional chess engine. 
     Analyze the FEN and provide the best move for the current turn.
-    Difficulty Level: ${difficulty}.
+    Difficulty: High Performance.
     Respond ONLY with the move in Standard Algebraic Notation (SAN) format (e.g., "e4", "Nf3", "O-O"). 
     NO conversational text. NO explanation.`;
 
@@ -25,7 +24,7 @@ export const getGeminiMove = async (fen: string, difficulty: Difficulty): Promis
       contents: `Current board position in FEN: ${fen}`,
       config: {
         systemInstruction: systemInstructions,
-        temperature: isGrandmaster ? 0.1 : 0.7,
+        temperature: 0.2,
       },
     });
 

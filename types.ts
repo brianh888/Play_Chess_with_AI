@@ -12,11 +12,6 @@ export interface Square {
   piece: Piece | null;
 }
 
-export enum Difficulty {
-  BEGINNER = 'Beginner',
-  GRANDMASTER = 'Grandmaster'
-}
-
 export interface GameState {
   fen: string;
   turn: PieceColor;

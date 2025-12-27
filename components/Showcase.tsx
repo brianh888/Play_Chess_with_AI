@@ -8,7 +8,7 @@ interface ShowcaseProps {
 
 const slides = [
   {
-    title: "Grandmaster AI Chess",
+    title: "Gemini AI Chess",
     subtitle: "The Ultimate Battle of Wits",
     content: "Step into a sophisticated digital arena where tradition meets cutting-edge technology. Experience chess like never before with a platform designed for both mastery and learning.",
     icon: <Sparkles className="text-emerald-400 w-20 h-20" />,
@@ -22,9 +22,9 @@ const slides = [
     gradient: "from-indigo-900/40 to-slate-900"
   },
   {
-    title: "Powered by Gemini 3",
-    subtitle: "Adaptive Intelligence",
-    content: "Face off against Google's latest AI models. Whether you choose 'Beginner' for a casual game or 'Grandmaster' for a world-class challenge, the AI adapts to your level.",
+    title: "High Performance AI",
+    subtitle: "Powered by Gemini 3",
+    content: "Face off against Google's latest AI models. Our engine utilizes optimized reasoning paths to provide a challenging opponent while ensuring a smooth, lag-free experience.",
     icon: <BrainCircuit className="text-purple-400 w-20 h-20" />,
     gradient: "from-purple-900/40 to-slate-900"
   },

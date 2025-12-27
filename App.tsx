@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const [showShowcase, setShowShowcase] = useState(false);
   
   const aiMoveAttemptRef = useRef<number>(0);
+  const isAiRequestInProgress = useRef<boolean>(false);
   const [tick, setTick] = useState(0);
 
   const forceUpdate = useCallback(() => {
@@ -26,8 +27,9 @@ const App: React.FC = () => {
   }, []);
 
   const handleAiMove = useCallback(async () => {
-    if (isAiThinking || game.isGameOver()) return;
+    if (isAiRequestInProgress.current || game.isGameOver()) return;
     
+    isAiRequestInProgress.current = true;
     setIsAiThinking(true);
     setError(null);
     const currentAttempt = ++aiMoveAttemptRef.current;
@@ -35,12 +37,13 @@ const App: React.FC = () => {
     try {
       const moveSan = await getGeminiMove(game.getFen());
       
+      // If a newer attempt or reset has occurred, ignore this result
       if (currentAttempt !== aiMoveAttemptRef.current) return;
 
       const moveResult = game.makeMove(moveSan);
       
       if (!moveResult) {
-        // Fallback to legal move if AI returns invalid SAN
+        // Fallback to legal move if AI returns invalid notation
         const legalMoves = game.getLegalMoves();
         if (legalMoves.length > 0) {
           game.makeMove(legalMoves[0]);
@@ -61,8 +64,9 @@ const App: React.FC = () => {
       }
     } finally {
       setIsAiThinking(false);
+      isAiRequestInProgress.current = false;
     }
-  }, [game, isAiThinking, forceUpdate]);
+  }, [game, forceUpdate]);
 
   const handleGetAdvice = async () => {
     if (isFetchingAdvice || isAiThinking || game.isGameOver()) return;
@@ -86,11 +90,13 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!isGameStarted || error) return; // Prevent loop flickering if there is an error
+    // If there is an active error, stop the automatic AI loop to prevent flickering/spamming
+    if (!isGameStarted || error) return; 
     
     const isAiTurn = game.getTurn() !== playerColor;
-    if (isAiTurn && !game.isGameOver() && !isAiThinking) {
-      const timer = setTimeout(() => handleAiMove(), 500);
+    if (isAiTurn && !game.isGameOver() && !isAiThinking && !isAiRequestInProgress.current) {
+      // Increased delay to 1s to respect API rate limits better
+      const timer = setTimeout(() => handleAiMove(), 1000);
       return () => clearTimeout(timer);
     }
   }, [tick, playerColor, isGameStarted, isAiThinking, game, handleAiMove, error]);
@@ -112,11 +118,13 @@ const App: React.FC = () => {
       game.undo();
       game.undo();
     }
-    setError(null); // Clear errors on undo to allow retry
+    setError(null); 
     forceUpdate();
   };
 
   const resetGame = () => {
+    aiMoveAttemptRef.current++; // Invalidate any pending AI moves
+    isAiRequestInProgress.current = false;
     game.reset();
     setIsGameStarted(true);
     setError(null);
@@ -276,8 +284,9 @@ const App: React.FC = () => {
                 <p className="text-center text-sm font-medium leading-relaxed text-red-100/80">
                   {error}
                 </p>
+                {/* Fixed: only clearing error state. The useEffect will automatically re-trigger handleAiMove if turn requires it. */}
                 <button 
-                  onClick={() => { setError(null); handleAiMove(); }}
+                  onClick={() => setError(null)}
                   className="flex items-center gap-2.5 px-6 py-2 bg-red-500 hover:bg-red-600 rounded-xl text-sm font-black text-white transition-all active:scale-95 shadow-lg shadow-red-500/30"
                 >
                   <RefreshCw size={16} /> Re-establish Link

@@ -1,19 +1,26 @@
 
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import process from 'node:process';
 
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
-  // The third parameter '' allows loading variables without the VITE_ prefix.
-  const env = loadEnv(mode, process.cwd(), '');
+  // Load env file from the current directory
+  // Fix: Cast process to any to resolve the TypeScript error where 'cwd' is not found on the Process type.
+  const env = loadEnv(mode, (process as any).cwd(), '');
+  
+  // Combine .env values with existing system environment variables
+  const apiKey = env.API_KEY || process.env.API_KEY || '';
   
   return {
     plugins: [react()],
     define: {
-      // Explicitly define process.env.API_KEY for the client-side code.
-      // Vite will replace occurrences of 'process.env.API_KEY' with this value.
-      'process.env.API_KEY': JSON.stringify(env.API_KEY || '')
+      // This performs a literal string replacement in the source code.
+      // We stringify the value to ensure it's treated as a string literal.
+      'process.env.API_KEY': JSON.stringify(apiKey)
+    },
+    server: {
+      watch: {
+        usePolling: true
+      }
     }
   };
 });

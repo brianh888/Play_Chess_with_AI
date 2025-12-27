@@ -29,6 +29,12 @@ const App: React.FC = () => {
   const handleAiMove = useCallback(async () => {
     if (isAiThinking || game.isGameOver()) return;
     
+    // Safety check for API Key before calling the service
+    if (!process.env.API_KEY || process.env.API_KEY === "") {
+      setError("API Key not found. If you just added it to .env, please RESTART your dev server.");
+      return;
+    }
+
     setIsAiThinking(true);
     setError(null);
     const currentAttempt = ++aiMoveAttemptRef.current;
@@ -52,11 +58,7 @@ const App: React.FC = () => {
       const errMsg = err.message || "";
       const upperMsg = errMsg.toUpperCase();
       
-      if (upperMsg.includes("API_KEY_MISSING")) {
-        setError("Configuration Error: API Key is empty. Did you restart the server after creating .env?");
-      } else if (upperMsg.includes("INVALID_KEY_FORMAT")) {
-        setError("Configuration Error: You used a Project ID instead of an API Key. Please use an AI Studio key.");
-      } else if (upperMsg.includes("401") || upperMsg.includes("UNAUTHORIZED")) {
+      if (upperMsg.includes("401") || upperMsg.includes("UNAUTHORIZED") || upperMsg.includes("API_KEY")) {
         setError("Auth Error: Your API key is invalid or unauthorized.");
       } else if (upperMsg.includes("429")) {
         setError("API Quota exceeded. Please wait a moment.");
@@ -71,6 +73,11 @@ const App: React.FC = () => {
   const handleGetAdvice = async () => {
     if (isFetchingAdvice || isAiThinking || game.isGameOver()) return;
     
+    if (!process.env.API_KEY || process.env.API_KEY === "") {
+      setError("API Key not found. Please restart your dev server.");
+      return;
+    }
+
     setIsFetchingAdvice(true);
     setError(null);
     try {
@@ -278,8 +285,8 @@ const App: React.FC = () => {
           {error && (
             <div className="mt-4 flex flex-col items-center gap-2">
               <div className="flex items-center gap-2 text-red-400 font-medium bg-red-900/20 py-3 px-6 rounded-xl border border-red-500/30">
-                <AlertCircle size={20} />
-                <span className="text-center">{error}</span>
+                <AlertCircle size={20} className="flex-shrink-0" />
+                <span className="text-center text-sm">{error}</span>
               </div>
               <button 
                 onClick={() => handleAiMove()}

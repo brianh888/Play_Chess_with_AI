@@ -34,7 +34,6 @@ const App: React.FC = () => {
     const currentAttempt = ++aiMoveAttemptRef.current;
 
     try {
-      // Direct call - relies on SDK guidelines for key handling
       const moveSan = await getGeminiMove(game.getFen(), difficulty);
       
       if (currentAttempt !== aiMoveAttemptRef.current) return;
@@ -42,6 +41,7 @@ const App: React.FC = () => {
       const moveResult = game.makeMove(moveSan);
       
       if (!moveResult) {
+        // Fallback to legal move if AI returns invalid SAN
         const legalMoves = game.getLegalMoves();
         if (legalMoves.length > 0) {
           game.makeMove(legalMoves[0]);
@@ -54,11 +54,11 @@ const App: React.FC = () => {
       const upperMsg = errMsg.toUpperCase();
       
       if (upperMsg.includes("API_KEY") || upperMsg.includes("KEY") || upperMsg.includes("401")) {
-        setError("API Key configuration error. Ensure your .env is correct and restart the server.");
+        setError("API Key Error: Please check your local .env configuration.");
       } else if (upperMsg.includes("429")) {
-        setError("API rate limit reached. Please wait a moment.");
+        setError("Rate limit exceeded. Please try again in a moment.");
       } else {
-        setError(`AI Error: ${errMsg || "An unexpected error occurred."}`);
+        setError(`Connection Error: ${errMsg || "The AI strategist is currently unreachable."}`);
       }
     } finally {
       setIsAiThinking(false);
@@ -80,7 +80,7 @@ const App: React.FC = () => {
       }
       setAdvice(hint);
     } catch (err: any) {
-      setError("AI Strategy service is currently busy.");
+      setError("Strategy engine is offline. Check your credentials.");
     } finally {
       setIsFetchingAdvice(false);
     }
@@ -129,15 +129,12 @@ const App: React.FC = () => {
     setDifficulty(prev => prev === Difficulty.BEGINNER ? Difficulty.GRANDMASTER : Difficulty.BEGINNER);
   };
 
-  const winner = game.getWinner();
-  const isGameOver = game.isGameOver();
-
   if (!isGameStarted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 p-6 text-slate-100">
         <div className="bg-slate-800/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl max-w-md w-full border border-slate-700/50 text-center">
           <h1 className="text-5xl font-black mb-6 tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Grandmaster AI</h1>
-          <p className="text-slate-400 mb-10 text-lg">Challenge the world's most advanced AI in a premium 3D chess arena.</p>
+          <p className="text-slate-400 mb-10 text-lg">Challenge a world-class AI in a premium 3D chess arena.</p>
           
           <div className="space-y-4 mb-10">
             <div className="flex justify-between items-center p-5 bg-slate-700/50 rounded-2xl border border-white/5">
@@ -193,6 +190,9 @@ const App: React.FC = () => {
       </div>
     );
   }
+
+  const winner = game.getWinner();
+  const isGameOver = game.isGameOver();
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col lg:flex-row p-4 md:p-8 gap-8 items-center justify-center overflow-y-auto">
@@ -261,7 +261,7 @@ const App: React.FC = () => {
               <div className="bg-yellow-500/20 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 border border-yellow-500/30">
                 <Trophy size={48} className="text-yellow-500" />
               </div>
-              <h2 className="text-5xl font-black text-white mb-4 tracking-tight">Victory!</h2>
+              <h2 className="text-5xl font-black text-white mb-4 tracking-tight">Match Over</h2>
               <p className="text-slate-400 text-2xl mb-12 font-medium">
                 {winner === 'draw' ? "Stalemate" : `${winner === 'w' ? 'White' : 'Black'} has conquered.`}
               </p>
@@ -286,7 +286,7 @@ const App: React.FC = () => {
               <div className="flex flex-col items-center gap-4 bg-red-500/10 py-6 px-8 rounded-3xl border border-red-500/30 backdrop-blur-md shadow-2xl max-w-md mx-auto">
                 <div className="flex items-center gap-3 text-red-400 font-black text-lg">
                   <AlertCircle size={24} />
-                  <span>Connectivity Error</span>
+                  <span>Connection Difficulty</span>
                 </div>
                 <p className="text-center text-sm font-medium leading-relaxed text-red-100/80">
                   {error}

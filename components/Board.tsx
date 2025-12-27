@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { COLUMNS, ROWS } from '../constants';
 import Piece from './Piece';
 import { PieceColor } from '../types';
@@ -19,6 +19,16 @@ const Board: React.FC<BoardProps> = ({ gameState, playerColor, onMove, isAiThink
   const boardData = gameState.getBoard();
   const currentTurn = gameState.getTurn();
   const isPlayerTurn = currentTurn === playerColor && !isAiThinking;
+
+  // Calculate legal moves for the piece being dragged
+  const legalMovesForSource = useMemo(() => {
+    if (!sourceSquare || !isPlayerTurn) return [];
+    return gameState.getLegalMoves(sourceSquare);
+  }, [sourceSquare, gameState, isPlayerTurn]);
+
+  // Track the last move to highlight it
+  const history = gameState.getHistory({ verbose: true });
+  const lastMove = history.length > 0 ? history[history.length - 1] : null;
 
   const handleDragStart = (square: string) => {
     setSourceSquare(square);
@@ -57,6 +67,13 @@ const Board: React.FC<BoardProps> = ({ gameState, playerColor, onMove, isAiThink
         
         const isHighlighted = dragOverSquare === squareAddress;
         
+        // Check if this square is a legal destination for the current drag
+        const isLegalTarget = legalMovesForSource.some((m: any) => m.to === squareAddress);
+        
+        // Highlight last move squares
+        const isLastMoveFrom = lastMove?.from === squareAddress;
+        const isLastMoveTo = lastMove?.to === squareAddress;
+
         // Highlight suggested move squares
         const isSuggestedFrom = suggestedMove?.from === squareAddress;
         const isSuggestedTo = suggestedMove?.to === squareAddress;
@@ -69,7 +86,8 @@ const Board: React.FC<BoardProps> = ({ gameState, playerColor, onMove, isAiThink
             className={`
               relative w-full aspect-square flex items-center justify-center
               ${isBlack ? 'chess-square-black' : 'chess-square-white'}
-              ${isHighlighted ? 'ring-4 ring-inset ring-yellow-400 z-10' : ''}
+              ${isHighlighted ? 'ring-4 ring-inset ring-indigo-400 z-10' : ''}
+              ${(isLastMoveFrom || isLastMoveTo) ? 'bg-yellow-400/20' : ''}
               ${isSuggestedFrom ? 'bg-emerald-500/30' : ''}
               ${isSuggestedTo ? 'bg-emerald-500/50' : ''}
             `}
@@ -89,6 +107,11 @@ const Board: React.FC<BoardProps> = ({ gameState, playerColor, onMove, isAiThink
             {/* Hint Markers */}
             {(isSuggestedFrom || isSuggestedTo) && (
               <div className="absolute inset-0 ring-4 ring-emerald-400/60 ring-inset animate-pulse z-0 pointer-events-none" />
+            )}
+
+            {/* Legal Move Indicator Dot */}
+            {isLegalTarget && (
+              <div className={`absolute w-3 h-3 rounded-full pointer-events-none z-20 ${piece ? 'ring-4 ring-slate-400/50' : 'bg-slate-400/30'}`} />
             )}
 
             {piece && (

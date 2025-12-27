@@ -20,8 +20,9 @@ export class ChessLogic {
     return this.game.board();
   }
 
-  getLegalMoves(square?: any) {
-    return this.game.moves({ square, verbose: true });
+  getLegalMoves(square?: string) {
+    // Chess.js expects square address if provided
+    return this.game.moves({ square: square as any, verbose: true });
   }
 
   makeMove(move: string | { from: string; to: string; promotion?: string }): Move | null {
@@ -54,7 +55,10 @@ export class ChessLogic {
     this.game.reset();
   }
 
-  getHistory() {
+  getHistory(options?: { verbose: boolean }) {
+    if (options?.verbose) {
+      return this.game.history({ verbose: true });
+    }
     return this.game.history();
   }
 }

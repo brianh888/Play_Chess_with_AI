@@ -49,11 +49,16 @@ const App: React.FC = () => {
       forceUpdate();
     } catch (err: any) {
       console.error("AI Move failed", err);
-      // More descriptive error messaging
       const errMsg = err.message || "";
-      if (errMsg.includes("401") || errMsg.includes("API_KEY")) {
-        setError("Invalid API Key. Please check your environment variables.");
-      } else if (errMsg.includes("429")) {
+      const upperMsg = errMsg.toUpperCase();
+      
+      if (upperMsg.includes("API_KEY_MISSING")) {
+        setError("Configuration Error: API Key is empty. Did you restart the server after creating .env?");
+      } else if (upperMsg.includes("INVALID_KEY_FORMAT")) {
+        setError("Configuration Error: You used a Project ID instead of an API Key. Please use an AI Studio key.");
+      } else if (upperMsg.includes("401") || upperMsg.includes("UNAUTHORIZED")) {
+        setError("Auth Error: Your API key is invalid or unauthorized.");
+      } else if (upperMsg.includes("429")) {
         setError("API Quota exceeded. Please wait a moment.");
       } else {
         setError(`AI Error: ${errMsg || "Failed to fetch move"}`);
@@ -274,7 +279,7 @@ const App: React.FC = () => {
             <div className="mt-4 flex flex-col items-center gap-2">
               <div className="flex items-center gap-2 text-red-400 font-medium bg-red-900/20 py-3 px-6 rounded-xl border border-red-500/30">
                 <AlertCircle size={20} />
-                {error}
+                <span className="text-center">{error}</span>
               </div>
               <button 
                 onClick={() => handleAiMove()}

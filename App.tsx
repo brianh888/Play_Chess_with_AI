@@ -5,7 +5,7 @@ import { getGeminiMove, getGeminiAdvice } from './services/geminiService';
 import { Difficulty, PieceColor, Advice } from './types';
 import Board from './components/Board';
 import Showcase from './components/Showcase';
-import { Trophy, RotateCcw, Settings, BrainCircuit, User, Lightbulb, Sparkles, Loader2, Undo2, Presentation, AlertCircle } from 'lucide-react';
+import { Trophy, RotateCcw, Settings, BrainCircuit, User, Lightbulb, Sparkles, Loader2, Undo2, Presentation, AlertCircle, RefreshCw } from 'lucide-react';
 
 const App: React.FC = () => {
   const [game, setGame] = useState(new ChessLogic());
@@ -52,8 +52,8 @@ const App: React.FC = () => {
       const errMsg = err.message || "";
       const upperMsg = errMsg.toUpperCase();
       
-      if (upperMsg.includes("401") || upperMsg.includes("UNAUTHORIZED") || upperMsg.includes("API_KEY")) {
-        setError("AI authentication failed. Please check your API key.");
+      if (upperMsg.includes("API_KEY") || upperMsg.includes("KEY") || upperMsg.includes("401")) {
+        setError("API Key missing or invalid. Please check your .env file and RESTART your dev server.");
       } else if (upperMsg.includes("429")) {
         setError("API rate limit exceeded. Please wait a moment.");
       } else {
@@ -79,7 +79,12 @@ const App: React.FC = () => {
       }
       setAdvice(hint);
     } catch (err: any) {
-      setError("AI Strategist is temporarily unavailable.");
+      const errMsg = err.message || "";
+      if (errMsg.toUpperCase().includes("API_KEY")) {
+        setError("API Key error. Ensure .env is set and the server was restarted.");
+      } else {
+        setError("AI Strategist is temporarily unavailable.");
+      }
     } finally {
       setIsFetchingAdvice(false);
     }
@@ -272,17 +277,24 @@ const App: React.FC = () => {
           />
           
           {error && (
-            <div className="mt-8 flex flex-col items-center gap-2">
-              <div className="flex items-center gap-3 text-red-400 font-medium bg-red-900/20 py-3 px-6 rounded-xl border border-red-500/30 backdrop-blur-sm">
-                <AlertCircle size={20} className="flex-shrink-0" />
-                <span className="text-center text-sm">{error}</span>
+            <div className="mt-8 flex flex-col items-center gap-3">
+              <div className="flex flex-col items-center gap-2 text-red-400 bg-red-900/20 py-4 px-6 rounded-2xl border border-red-500/30 backdrop-blur-sm shadow-xl max-w-sm">
+                <div className="flex items-center gap-2 font-bold">
+                  <AlertCircle size={20} />
+                  <span>Connectivity Issue</span>
+                </div>
+                <p className="text-center text-xs leading-relaxed opacity-90">
+                  {error}
+                </p>
+                <div className="mt-2 flex gap-3">
+                  <button 
+                    onClick={() => handleAiMove()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-xs font-bold transition-all border border-red-500/20"
+                  >
+                    <RefreshCw size={12} /> Retry
+                  </button>
+                </div>
               </div>
-              <button 
-                onClick={() => handleAiMove()}
-                className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
-              >
-                Retry AI Action
-              </button>
             </div>
           )}
         </div>

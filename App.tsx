@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChessLogic } from './services/chessLogic';
 import { getGeminiMove, getGeminiAdvice } from './services/geminiService';
 import { Difficulty, PieceColor, Advice } from './types';
 import Board from './components/Board';
 import Showcase from './components/Showcase';
-import { Trophy, RotateCcw, Settings, BrainCircuit, User, Lightbulb, Sparkles, Loader2, Undo2, Presentation } from 'lucide-react';
+import { Trophy, RotateCcw, Settings, BrainCircuit, User, Lightbulb, Sparkles, Loader2, Undo2, Presentation, AlertCircle } from 'lucide-react';
 
 const App: React.FC = () => {
   const [game, setGame] = useState(new ChessLogic());
@@ -18,32 +18,41 @@ const App: React.FC = () => {
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [showShowcase, setShowShowcase] = useState(false);
   
+  const aiMoveAttemptRef = useRef<number>(0);
   const [tick, setTick] = useState(0);
+
   const forceUpdate = useCallback(() => {
     setTick(t => t + 1);
-    setAdvice(null); // Clear advice on move
+    setAdvice(null);
   }, []);
 
   const handleAiMove = useCallback(async () => {
+    // Avoid multiple concurrent requests
     if (isAiThinking || game.isGameOver()) return;
     
     setIsAiThinking(true);
     setError(null);
+    const currentAttempt = ++aiMoveAttemptRef.current;
+
     try {
-      await new Promise(r => setTimeout(r, 800));
       const moveSan = await getGeminiMove(game.getFen(), difficulty);
+      
+      // Ensure we are still on the same attempt (prevent race conditions)
+      if (currentAttempt !== aiMoveAttemptRef.current) return;
+
       const moveResult = game.makeMove(moveSan);
       
       if (!moveResult) {
+        console.warn(`AI suggested invalid move: ${moveSan}. Falling back to first legal move.`);
         const legalMoves = game.getLegalMoves();
         if (legalMoves.length > 0) {
           game.makeMove(legalMoves[0]);
         }
       }
       forceUpdate();
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Move failed", err);
-      setError("AI failed to think of a move. Try again.");
+      setError(err.message?.includes('API_KEY') ? "API Key Missing: Set API_KEY in your environment." : "AI is taking too long. Try refreshing.");
     } finally {
       setIsAiThinking(false);
     }
@@ -55,28 +64,27 @@ const App: React.FC = () => {
     setIsFetchingAdvice(true);
     try {
       const hint = await getGeminiAdvice(game.getFen());
-      
-      // Temporarily apply move to find coordinates
       const testMove = game.makeMove(hint.move);
       if (testMove) {
         hint.from = testMove.from;
         hint.to = testMove.to;
-        game.undo(); // Rollback
+        game.undo();
       }
-      
       setAdvice(hint);
     } catch (err) {
-      console.error("Advice failed", err);
-      setError("Strategic advice unavailable right now.");
+      setError("Strategist is currently unavailable.");
     } finally {
       setIsFetchingAdvice(false);
     }
   };
 
   useEffect(() => {
+    if (!isGameStarted) return;
+    
     const isAiTurn = game.getTurn() !== playerColor;
-    if (isGameStarted && isAiTurn && !game.isGameOver() && !isAiThinking) {
-      handleAiMove();
+    if (isAiTurn && !game.isGameOver() && !isAiThinking) {
+      const timer = setTimeout(() => handleAiMove(), 500);
+      return () => clearTimeout(timer);
     }
   }, [tick, playerColor, isGameStarted, isAiThinking, game, handleAiMove]);
 
@@ -90,13 +98,10 @@ const App: React.FC = () => {
 
   const handleUndo = () => {
     if (isAiThinking) return;
-    
-    const isAiTurn = game.getTurn() !== playerColor;
-    if (isAiTurn) {
-      // Undo player's move
+    const turn = game.getTurn();
+    if (turn !== playerColor) {
       game.undo();
     } else {
-      // Undo AI's move AND player's last move
       game.undo();
       game.undo();
     }
@@ -184,7 +189,6 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col lg:flex-row p-4 md:p-8 gap-8 items-center justify-center overflow-y-auto">
       
-      {/* Game Info - Left Side */}
       <div className="w-full lg:w-1/4 flex flex-col gap-6 order-2 lg:order-1">
         <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
           <div className="flex items-center gap-3 mb-6">
@@ -207,8 +211,8 @@ const App: React.FC = () => {
 
             {isAiThinking && (
               <div className="flex items-center gap-3 py-2 text-indigo-400 animate-pulse">
-                <BrainCircuit size={20} className="animate-bounce" />
-                <span className="text-sm font-semibold tracking-wide">AI is analyzing...</span>
+                <BrainCircuit size={20} className="animate-spin-slow" />
+                <span className="text-sm font-semibold tracking-wide">Analyzing move...</span>
               </div>
             )}
 
@@ -239,7 +243,6 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Board - Center */}
       <div className="flex-1 flex flex-col items-center justify-center order-1 lg:order-2 w-full max-w-[600px]">
         {isGameOver && (
           <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6">
@@ -257,10 +260,7 @@ const App: React.FC = () => {
               <p className="text-slate-400 text-xl mb-10">
                 {winner === 'draw' ? "It's a Draw!" : `${winner === 'w' ? 'White' : 'Black'} wins!`}
               </p>
-              <button 
-                onClick={resetGame}
-                className="w-full py-4 bg-[#4f46e5] hover:bg-[#4338ca] text-white rounded-2xl font-bold text-lg transition-all shadow-lg"
-              >
+              <button onClick={resetGame} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-lg transition-all shadow-lg">
                 Play Again
               </button>
             </div>
@@ -277,16 +277,15 @@ const App: React.FC = () => {
           />
           
           {error && (
-            <div className="absolute -bottom-12 left-0 right-0 text-red-400 text-center font-medium bg-red-900/20 py-2 rounded-lg border border-red-500/30">
+            <div className="mt-4 flex items-center justify-center gap-2 text-red-400 font-medium bg-red-900/20 py-3 px-6 rounded-xl border border-red-500/30 animate-in fade-in slide-in-from-top-2">
+              <AlertCircle size={20} />
               {error}
             </div>
           )}
         </div>
       </div>
 
-      {/* Strategist & Controls - Right Side */}
       <div className="w-full lg:w-1/4 flex flex-col gap-6 order-3">
-        {/* AI Strategist Panel */}
         <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl overflow-hidden relative group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Sparkles size={60} />
@@ -320,11 +319,7 @@ const App: React.FC = () => {
                   : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg active:scale-95'
               }`}
             >
-              {isFetchingAdvice ? (
-                <Loader2 className="animate-spin" size={20} />
-              ) : (
-                <Sparkles size={18} />
-              )}
+              {isFetchingAdvice ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={18} />}
               {isFetchingAdvice ? 'Consulting...' : 'Get Move Advice'}
             </button>
           </div>

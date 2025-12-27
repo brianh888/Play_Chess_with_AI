@@ -3,46 +3,38 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Difficulty, Advice } from "../types";
 
 export const getGeminiMove = async (fen: string, difficulty: Difficulty): Promise<string> => {
+  // Always create a fresh instance to ensure the most up-to-date key is used
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const isGrandmaster = difficulty === Difficulty.GRANDMASTER;
-  const model = isGrandmaster ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+  // Using Flash for both to ensure maximum speed and lower latency
+  const model = 'gemini-3-flash-preview';
 
-  const systemInstructions = isGrandmaster 
-    ? `You are a world-class Grandmaster chess engine. 
-       Analyze the following board position in FEN format. 
-       Determine the absolute best move. 
-       Respond ONLY with the move in Standard Algebraic Notation (SAN), e.g., "e4", "Nf3", "O-O", "Bxe5+". 
-       Do not include any other text or explanations.`
-    : `You are a casual beginner chess player. 
-       Analyze the following board position in FEN format. 
-       Make a reasonable move. 
-       Respond ONLY with the move in Standard Algebraic Notation (SAN).`;
+  const systemInstructions = `You are a professional chess engine. 
+    Analyze the FEN and provide the best move for the current turn.
+    Current Difficulty: ${difficulty}.
+    Respond ONLY with the move in SAN format (e.g., "e4", "Nf3", "O-O"). 
+    NO conversational text. NO explanation.`;
 
   try {
     const response = await ai.models.generateContent({
       model: model,
-      contents: `Current FEN: ${fen}`,
+      contents: `FEN: ${fen}`,
       config: {
         systemInstruction: systemInstructions,
-        temperature: isGrandmaster ? 0.1 : 0.7,
-        // Disable "thinking" for Beginner, and set a low budget for Grandmaster for speed
-        thinkingConfig: { 
-          thinkingBudget: isGrandmaster ? 1000 : 0 
-        },
+        temperature: isGrandmaster ? 0.0 : 0.7, // 0.0 for deterministic GM moves
+        thinkingConfig: { thinkingBudget: 0 }, // Disable thinking to reduce latency to absolute minimum
       },
     });
 
-    const text = response.text || "";
-    // Clean up response: Find the first string that looks like SAN
-    // We look for patterns like e4, Nf3, O-O, Bxe5+, etc.
-    const moveMatch = text.match(/([RNBQK]?[a-h]?[1-8]?x?[a-h][1-8](=[RNBQ])?[+#]?)|(O-O-O)|(O-O)/);
-    const cleanMove = moveMatch ? moveMatch[0] : text.trim().split(/\s+/)[0];
-    
-    return cleanMove;
-  } catch (error) {
+    const text = (response.text || "").trim();
+    // Use a simpler regex that is less prone to stalling
+    const moveMatch = text.match(/[a-hNRBQKx1-8+#=O-]+/);
+    return moveMatch ? moveMatch[0] : text;
+  } catch (error: any) {
     console.error("Gemini AI move error:", error);
-    throw error;
+    // Include specific error code if available
+    throw new Error(error.status || error.message || "Unknown AI error");
   }
 };
 
@@ -55,23 +47,22 @@ export const getGeminiAdvice = async (fen: string): Promise<Advice> => {
       contents: `Chess position (FEN): ${fen}`,
       config: {
         systemInstruction: `You are a professional chess coach. 
-        Provide the best move in Standard Algebraic Notation (SAN) and a concise, one-sentence tactical explanation. 
-        Your response MUST be in JSON format.`,
-        thinkingConfig: { thinkingBudget: 0 }, // Advice should be instant
+        Analyze the FEN. Provide the best move in SAN and a one-sentence explanation. 
+        Output MUST be valid JSON.`,
+        thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            move: { type: Type.STRING, description: "The suggested move in SAN format" },
-            explanation: { type: Type.STRING, description: "One sentence strategy" }
+            move: { type: Type.STRING },
+            explanation: { type: Type.STRING }
           },
           required: ["move", "explanation"]
         }
       },
     });
 
-    const result = JSON.parse(response.text || "{}");
-    return result as Advice;
+    return JSON.parse(response.text || "{}");
   } catch (error) {
     console.error("Gemini Advice error:", error);
     throw error;

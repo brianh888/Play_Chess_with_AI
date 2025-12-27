@@ -27,7 +27,6 @@ const App: React.FC = () => {
   }, []);
 
   const handleAiMove = useCallback(async () => {
-    // Avoid multiple concurrent requests
     if (isAiThinking || game.isGameOver()) return;
     
     setIsAiThinking(true);
@@ -37,13 +36,11 @@ const App: React.FC = () => {
     try {
       const moveSan = await getGeminiMove(game.getFen(), difficulty);
       
-      // Ensure we are still on the same attempt (prevent race conditions)
       if (currentAttempt !== aiMoveAttemptRef.current) return;
 
       const moveResult = game.makeMove(moveSan);
       
       if (!moveResult) {
-        console.warn(`AI suggested invalid move: ${moveSan}. Falling back to first legal move.`);
         const legalMoves = game.getLegalMoves();
         if (legalMoves.length > 0) {
           game.makeMove(legalMoves[0]);
@@ -52,7 +49,15 @@ const App: React.FC = () => {
       forceUpdate();
     } catch (err: any) {
       console.error("AI Move failed", err);
-      setError(err.message?.includes('API_KEY') ? "API Key Missing: Set API_KEY in your environment." : "AI is taking too long. Try refreshing.");
+      // More descriptive error messaging
+      const errMsg = err.message || "";
+      if (errMsg.includes("401") || errMsg.includes("API_KEY")) {
+        setError("Invalid API Key. Please check your environment variables.");
+      } else if (errMsg.includes("429")) {
+        setError("API Quota exceeded. Please wait a moment.");
+      } else {
+        setError(`AI Error: ${errMsg || "Failed to fetch move"}`);
+      }
     } finally {
       setIsAiThinking(false);
     }
@@ -62,6 +67,7 @@ const App: React.FC = () => {
     if (isFetchingAdvice || isAiThinking || game.isGameOver()) return;
     
     setIsFetchingAdvice(true);
+    setError(null);
     try {
       const hint = await getGeminiAdvice(game.getFen());
       const testMove = game.makeMove(hint.move);
@@ -71,8 +77,8 @@ const App: React.FC = () => {
         game.undo();
       }
       setAdvice(hint);
-    } catch (err) {
-      setError("Strategist is currently unavailable.");
+    } catch (err: any) {
+      setError("Strategic advice unavailable right now.");
     } finally {
       setIsFetchingAdvice(false);
     }
@@ -126,9 +132,9 @@ const App: React.FC = () => {
 
   if (!isGameStarted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 p-6">
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 p-6 text-slate-100">
         <div className="bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 text-center">
-          <h1 className="text-4xl font-bold mb-6 text-white tracking-tight">Grandmaster AI</h1>
+          <h1 className="text-4xl font-bold mb-6 tracking-tight">Grandmaster AI</h1>
           <p className="text-slate-400 mb-8">Play chess against a world-class AI with real-time strategic advice.</p>
           
           <div className="space-y-4 mb-8">
@@ -212,7 +218,7 @@ const App: React.FC = () => {
             {isAiThinking && (
               <div className="flex items-center gap-3 py-2 text-indigo-400 animate-pulse">
                 <BrainCircuit size={20} className="animate-spin-slow" />
-                <span className="text-sm font-semibold tracking-wide">Analyzing move...</span>
+                <span className="text-sm font-semibold tracking-wide">AI is thinking...</span>
               </div>
             )}
 
@@ -236,9 +242,6 @@ const App: React.FC = () => {
                 <span className={`flex-1 ${i % 2 === 0 ? 'text-slate-100' : 'text-slate-400'}`}>{move}</span>
               </div>
             ))}
-            {game.getHistory().length === 0 && (
-              <p className="text-slate-500 text-center py-8 italic">No moves yet</p>
-            )}
           </div>
         </div>
       </div>
@@ -246,16 +249,7 @@ const App: React.FC = () => {
       <div className="flex-1 flex flex-col items-center justify-center order-1 lg:order-2 w-full max-w-[600px]">
         {isGameOver && (
           <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6">
-            <div className="bg-[#1e293b] p-10 rounded-[40px] border border-white/5 shadow-2xl text-center max-w-sm w-full animate-in zoom-in-95 duration-300">
-              <div className="flex justify-center mb-6">
-                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                   <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
-                   <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
-                   <path d="M4 22h16"></path>
-                   <path d="M10 14.66V17c0 .55.47.98.97 1.21C11.47 18.44 12 19 12 19s.53-.56 1.03-.79c.5-.23.97-.66.97-1.21v-2.34"></path>
-                   <path d="M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z"></path>
-                 </svg>
-              </div>
+            <div className="bg-[#1e293b] p-10 rounded-[40px] border border-white/5 shadow-2xl text-center max-w-sm w-full">
               <h2 className="text-4xl font-bold text-white mb-2">Game Over</h2>
               <p className="text-slate-400 text-xl mb-10">
                 {winner === 'draw' ? "It's a Draw!" : `${winner === 'w' ? 'White' : 'Black'} wins!`}
@@ -277,50 +271,46 @@ const App: React.FC = () => {
           />
           
           {error && (
-            <div className="mt-4 flex items-center justify-center gap-2 text-red-400 font-medium bg-red-900/20 py-3 px-6 rounded-xl border border-red-500/30 animate-in fade-in slide-in-from-top-2">
-              <AlertCircle size={20} />
-              {error}
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2 text-red-400 font-medium bg-red-900/20 py-3 px-6 rounded-xl border border-red-500/30">
+                <AlertCircle size={20} />
+                {error}
+              </div>
+              <button 
+                onClick={() => handleAiMove()}
+                className="text-xs text-indigo-400 hover:underline"
+              >
+                Retry AI Move
+              </button>
             </div>
           )}
         </div>
       </div>
 
       <div className="w-full lg:w-1/4 flex flex-col gap-6 order-3">
-        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl overflow-hidden relative group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Sparkles size={60} />
-          </div>
-          
+        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl overflow-hidden relative">
           <div className="flex items-center gap-3 mb-4">
             <Lightbulb className="text-yellow-400" />
             <h2 className="text-xl font-bold">AI Strategist</h2>
           </div>
-          
           <div className="space-y-4">
-            {advice ? (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-500">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-emerald-400 font-bold text-lg">Suggestion: {advice.move}</span>
-                </div>
-                <p className="text-slate-300 text-sm italic leading-relaxed bg-slate-900/50 p-3 rounded-lg border border-slate-700">
-                  "{advice.explanation}"
-                </p>
+            {advice && (
+              <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+                <span className="text-emerald-400 font-bold block mb-1">Move: {advice.move}</span>
+                <p className="text-slate-300 text-sm italic leading-relaxed">"{advice.explanation}"</p>
               </div>
-            ) : (
-              <p className="text-slate-500 text-sm italic">Need help with your next move?</p>
             )}
-
             <button 
               onClick={handleGetAdvice}
               disabled={isFetchingAdvice || isAiThinking || game.getTurn() !== playerColor}
               className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
                 isFetchingAdvice 
                   ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg active:scale-95'
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg active:scale-95'
               }`}
             >
               {isFetchingAdvice ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={18} />}
-              {isFetchingAdvice ? 'Consulting...' : 'Get Move Advice'}
+              {isFetchingAdvice ? 'Analyzing...' : 'Get Advice'}
             </button>
           </div>
         </div>
@@ -330,13 +320,12 @@ const App: React.FC = () => {
             <Settings className="text-slate-400" />
             <h2 className="text-xl font-bold">Controls</h2>
           </div>
-          
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
               <button 
                 onClick={handleUndo}
                 disabled={isAiThinking || game.getHistory().length === 0}
-                className="py-3 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all"
+                className="py-3 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all"
               >
                 <Undo2 size={18} /> Undo
               </button>
@@ -347,12 +336,11 @@ const App: React.FC = () => {
                 <RotateCcw size={18} /> Reset
               </button>
             </div>
-            
             <button 
               onClick={toggleDifficulty}
-              className="w-full py-3 bg-indigo-900/40 hover:bg-indigo-800/60 border border-indigo-500/30 text-indigo-100 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all"
+              className="w-full py-3 bg-indigo-900/40 border border-indigo-500/30 text-indigo-100 rounded-xl font-semibold flex items-center justify-center gap-2"
             >
-              <BrainCircuit size={18} /> Level: {difficulty}
+              <BrainCircuit size={18} /> {difficulty}
             </button>
           </div>
         </div>

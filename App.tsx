@@ -4,7 +4,8 @@ import { ChessLogic } from './services/chessLogic';
 import { getGeminiMove, getGeminiAdvice } from './services/geminiService';
 import { Difficulty, PieceColor, Advice } from './types';
 import Board from './components/Board';
-import { Trophy, RotateCcw, Settings, BrainCircuit, User, Lightbulb, Sparkles, Loader2, Undo2 } from 'lucide-react';
+import Showcase from './components/Showcase';
+import { Trophy, RotateCcw, Settings, BrainCircuit, User, Lightbulb, Sparkles, Loader2, Undo2, Presentation } from 'lucide-react';
 
 const App: React.FC = () => {
   const [game, setGame] = useState(new ChessLogic());
@@ -15,6 +16,7 @@ const App: React.FC = () => {
   const [advice, setAdvice] = useState<Advice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isGameStarted, setIsGameStarted] = useState(false);
+  const [showShowcase, setShowShowcase] = useState(false);
   
   const [tick, setTick] = useState(0);
   const forceUpdate = useCallback(() => {
@@ -155,16 +157,26 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <button 
-            onClick={() => {
-              setIsGameStarted(true);
-              forceUpdate();
-            }}
-            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95"
-          >
-            Start Game
-          </button>
+          <div className="flex flex-col gap-3">
+            <button 
+              onClick={() => {
+                setIsGameStarted(true);
+                forceUpdate();
+              }}
+              className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95"
+            >
+              Start Game
+            </button>
+            <button 
+              onClick={() => setShowShowcase(true)}
+              className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all"
+            >
+              <Presentation size={18} /> Feature Showcase
+            </button>
+          </div>
         </div>
+
+        {showShowcase && <Showcase onClose={() => setShowShowcase(false)} />}
       </div>
     );
   }
@@ -231,15 +243,23 @@ const App: React.FC = () => {
       <div className="flex-1 flex flex-col items-center justify-center order-1 lg:order-2 w-full max-w-[600px]">
         {isGameOver && (
           <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6">
-            <div className="bg-slate-800 p-10 rounded-3xl border border-slate-700 shadow-2xl text-center max-w-sm w-full animate-in zoom-in-95 duration-300">
-              <Trophy size={64} className="mx-auto text-yellow-500 mb-6" />
-              <h2 className="text-4xl font-black mb-2">Game Over</h2>
-              <p className="text-slate-300 text-xl mb-8">
+            <div className="bg-[#1e293b] p-10 rounded-[40px] border border-white/5 shadow-2xl text-center max-w-sm w-full animate-in zoom-in-95 duration-300">
+              <div className="flex justify-center mb-6">
+                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                   <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                   <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                   <path d="M4 22h16"></path>
+                   <path d="M10 14.66V17c0 .55.47.98.97 1.21C11.47 18.44 12 19 12 19s.53-.56 1.03-.79c.5-.23.97-.66.97-1.21v-2.34"></path>
+                   <path d="M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z"></path>
+                 </svg>
+              </div>
+              <h2 className="text-4xl font-bold text-white mb-2">Game Over</h2>
+              <p className="text-slate-400 text-xl mb-10">
                 {winner === 'draw' ? "It's a Draw!" : `${winner === 'w' ? 'White' : 'Black'} wins!`}
               </p>
               <button 
                 onClick={resetGame}
-                className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-lg transition-all shadow-lg hover:shadow-indigo-500/30"
+                className="w-full py-4 bg-[#4f46e5] hover:bg-[#4338ca] text-white rounded-2xl font-bold text-lg transition-all shadow-lg"
               >
                 Play Again
               </button>

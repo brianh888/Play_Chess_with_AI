@@ -31,7 +31,6 @@ const App: React.FC = () => {
     const currentFen = game.getFen();
 
     // STRICT GUARD: If we are already processing this EXACT board state, do not fire again.
-    // This prevents React Strict Mode from triggering two API calls.
     if (isAiThinking || game.isGameOver() || processingFenRef.current === currentFen) return;
     
     setIsAiThinking(true);
@@ -44,28 +43,35 @@ const App: React.FC = () => {
       const moveResult = game.makeMove(moveSan);
       
       if (!moveResult) {
-        // Fallback to legal move if AI returns invalid SAN
-        const legalMoves = game.getLegalMoves();
-        if (legalMoves.length > 0) {
-          game.makeMove(legalMoves[0]);
-        }
+        throw new Error("Invalid SAN returned by AI");
       }
       forceUpdate();
+
     } catch (err: any) {
       console.error("AI Move failed", err);
-      // If failed, clear the lock so the user can retry manually
+      // Clear the lock so we aren't stuck forever
       processingFenRef.current = "";
 
-      const errMsg = err.message || "";
-      const upperMsg = errMsg.toUpperCase();
+      // --- FALLBACK MECHANISM ---
+      // If AI times out or fails, play a random legal move so the game continues.
+      const legalMoves = game.getLegalMoves();
       
-      if (upperMsg.includes("API_KEY") || upperMsg.includes("KEY") || upperMsg.includes("401")) {
-        setError("API Key Error: Please check your local .env configuration.");
-      } else if (upperMsg.includes("429")) {
-        setError("Rate limit exceeded. Please wait a moment before retrying.");
+      if (legalMoves.length > 0) {
+        const randomMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+        game.makeMove(randomMove);
+        
+        // Inform the user what happened
+        if (err.message === "TIMEOUT") {
+          setError("AI took too long. Played a fallback move.");
+        } else {
+          setError("AI Connection unstable. Played a fallback move.");
+        }
+        forceUpdate();
       } else {
-        setError(`Connection Error: ${errMsg || "The AI strategist is currently unreachable."}`);
+        // This usually means Checkmate or Stalemate was reached during thinking
+        setError("Game ended.");
       }
+
     } finally {
       setIsAiThinking(false);
     }
@@ -296,20 +302,23 @@ const App: React.FC = () => {
               <div className="flex flex-col items-center gap-4 bg-red-500/10 py-6 px-8 rounded-3xl border border-red-500/30 backdrop-blur-md shadow-2xl max-w-md mx-auto">
                 <div className="flex items-center gap-3 text-red-400 font-black text-lg">
                   <AlertCircle size={24} />
-                  <span>Connection Difficulty</span>
+                  <span>{error.includes("Game ended") ? "Game Status" : "Connection Difficulty"}</span>
                 </div>
                 <p className="text-center text-sm font-medium leading-relaxed text-red-100/80">
                   {error}
                 </p>
-                <button 
-                  onClick={() => {
-                    processingFenRef.current = ""; // Unlock to retry
-                    handleAiMove();
-                  }}
-                  className="flex items-center gap-2.5 px-6 py-2 bg-red-500 hover:bg-red-600 rounded-xl text-sm font-black text-white transition-all active:scale-95 shadow-lg shadow-red-500/30"
-                >
-                  <RefreshCw size={16} /> Re-establish Link
-                </button>
+                {/* Only show refresh if it wasn't a game-ending fallback event */}
+                {!error.includes("Played a fallback move") && !error.includes("Game ended") && (
+                  <button 
+                    onClick={() => {
+                      processingFenRef.current = ""; // Unlock to retry
+                      handleAiMove();
+                    }}
+                    className="flex items-center gap-2.5 px-6 py-2 bg-red-500 hover:bg-red-600 rounded-xl text-sm font-black text-white transition-all active:scale-95 shadow-lg shadow-red-500/30"
+                  >
+                    <RefreshCw size={16} /> Re-establish Link
+                  </button>
+                )}
               </div>
             </div>
           )}

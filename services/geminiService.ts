@@ -30,7 +30,12 @@ export const getGeminiMove = async (fen: string, difficulty: Difficulty, retryCo
     NO conversational text. NO explanation.`;
 
   try {
-    const response = await ai.models.generateContent({
+    // 2. Strict 20-second timeout wrapper
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error("TIMEOUT")), 20000)
+    );
+
+    const apiPromise = ai.models.generateContent({
       model: model,
       contents: `Current board position in FEN: ${fen}`,
       config: {
@@ -39,18 +44,27 @@ export const getGeminiMove = async (fen: string, difficulty: Difficulty, retryCo
       },
     });
 
-    const text = (response.text || "").trim();
+    // Race the API call against the timeout
+    const response = await Promise.race([apiPromise, timeoutPromise]);
+
+    // Type assertion because Promise.race returns generic type of the winner
+    const text = ((response as any).text || "").trim();
     const moveMatch = text.match(/[a-hNRBQKx1-8+#=O-]+/);
     const result = moveMatch ? moveMatch[0] : text;
 
-    // 2. Save to cache if valid
+    // 3. Save to cache if valid
     if (result) {
       moveCache.set(cacheKey, result);
     }
     return result;
 
   } catch (error: any) {
-    // 3. Retry logic for Rate Limits (429)
+    // If it's a timeout, strictly throw it so App.tsx can handle the fallback immediately
+    if (error.message === "TIMEOUT") {
+      throw error;
+    }
+
+    // 4. Retry logic for Rate Limits (429)
     if (error.message?.includes("429") && retryCount < 3) {
       console.warn(`Rate limit hit. Retrying in ${(retryCount + 1) * 2} seconds...`);
       await delay(2000 * (retryCount + 1)); // Wait 2s, then 4s, then 6s

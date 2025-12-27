@@ -17,7 +17,6 @@ const App: React.FC = () => {
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [showShowcase, setShowShowcase] = useState(false);
   
-  // Use a ref for the move count to trigger AI without relying on complex state watchers
   const [moveCount, setMoveCount] = useState(0);
   const aiProcessingRef = useRef(false);
 
@@ -35,8 +34,7 @@ const App: React.FC = () => {
       const moveResult = game.makeMove(moveSan);
       
       if (!moveResult) {
-        // Fallback: If AI provides invalid notation, pick the first legal move
-        // to ensure the game doesn't get stuck in a loop
+        // Only if API succeeded but move was invalid notation
         const legalMoves = game.getLegalMoves();
         if (legalMoves.length > 0) {
           game.makeMove(legalMoves[0]);
@@ -46,12 +44,12 @@ const App: React.FC = () => {
       setMoveCount(prev => prev + 1);
       setAdvice(null);
     } catch (err: any) {
-      console.error("AI Move failed", err);
+      console.error("AI Move failed after retries", err);
       const errMsg = err.message || "";
       if (errMsg.includes("429")) {
-        setError("Rate limit exceeded. Please wait a moment before retrying.");
+        setError("Rate limit reached. The AI engine needs a short break.");
       } else {
-        setError("The AI strategist is currently unreachable.");
+        setError("Satellite link lost. Please check connection.");
       }
     } finally {
       setIsAiThinking(false);
@@ -74,7 +72,7 @@ const App: React.FC = () => {
       }
       setAdvice(hint);
     } catch (err: any) {
-      setError("Strategic advice is unavailable right now.");
+      setError("Advice system offline.");
     } finally {
       setIsFetchingAdvice(false);
     }
@@ -85,7 +83,8 @@ const App: React.FC = () => {
     
     const isAiTurn = game.getTurn() !== playerColor;
     if (isAiTurn && !game.isGameOver()) {
-      const timer = setTimeout(() => handleAiMove(), 1200);
+      // Longer delay (2s) to spread out requests and allow UI to breathe
+      const timer = setTimeout(() => handleAiMove(), 2000);
       return () => clearTimeout(timer);
     }
   }, [moveCount, playerColor, isGameStarted, error, isAiThinking, game, handleAiMove]);
@@ -125,7 +124,7 @@ const App: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-slate-900 p-6 text-slate-100">
         <div className="bg-slate-800/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl max-w-md w-full border border-slate-700/50 text-center">
           <h1 className="text-5xl font-black mb-6 tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Gemini Chess</h1>
-          <p className="text-slate-400 mb-10 text-lg">Experience high-performance chess powered by Gemini Flash.</p>
+          <p className="text-slate-400 mb-10 text-lg">Challenge the next generation of AI in a stunning 3D arena.</p>
           
           <div className="space-y-4 mb-10">
             <div className="flex justify-between items-center p-5 bg-slate-700/50 rounded-2xl border border-white/5">
@@ -174,7 +173,6 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col lg:flex-row p-4 md:p-8 gap-8 items-center justify-center overflow-y-auto">
       
-      {/* Sidebar Left: Game Status */}
       <div className="w-full lg:w-1/4 flex flex-col gap-6 order-2 lg:order-1">
         <div className="bg-slate-900/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl">
           <div className="flex items-center gap-4 mb-8">
@@ -200,7 +198,7 @@ const App: React.FC = () => {
             {isAiThinking && (
               <div className="flex items-center gap-4 p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
                 <BrainCircuit size={24} className="text-indigo-400 animate-spin-slow" />
-                <span className="text-sm font-black text-indigo-300 tracking-wider animate-pulse uppercase">AI Strategizing...</span>
+                <span className="text-sm font-black text-indigo-300 tracking-wider animate-pulse uppercase">AI Thinking...</span>
               </div>
             )}
 
@@ -230,7 +228,6 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Main: Chess Board */}
       <div className="flex-1 flex flex-col items-center justify-center order-1 lg:order-2 w-full max-w-[650px]">
         {isGameOver && (
           <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-2xl flex items-center justify-center p-6">
@@ -240,7 +237,7 @@ const App: React.FC = () => {
               </div>
               <h2 className="text-5xl font-black text-white mb-4 tracking-tight">Match Over</h2>
               <p className="text-slate-400 text-2xl mb-12 font-medium">
-                {winner === 'draw' ? "Stalemate" : `${winner === 'w' ? 'White' : 'Black'} has conquered.`}
+                {winner === 'draw' ? "Stalemate" : `${winner === 'w' ? 'White' : 'Black'} Wins.`}
               </p>
               <button onClick={resetGame} className="w-full py-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-3xl font-black text-xl transition-all shadow-2xl shadow-indigo-500/40 active:scale-95">
                 New Conquest
@@ -269,7 +266,7 @@ const App: React.FC = () => {
                   {error}
                 </p>
                 <button 
-                  onClick={() => { setError(null); setMoveCount(prev => prev + 1); }}
+                  onClick={() => { setError(null); }}
                   className="flex items-center gap-2.5 px-6 py-2 bg-red-500 hover:bg-red-600 rounded-xl text-sm font-black text-white transition-all active:scale-95 shadow-lg shadow-red-500/30"
                 >
                   <RefreshCw size={16} /> Re-establish Link
@@ -280,7 +277,6 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Sidebar Right: Controls & AI Strategist */}
       <div className="w-full lg:w-1/4 flex flex-col gap-6 order-3">
         <div className="bg-slate-900/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
           <div className="flex items-center gap-4 mb-8">

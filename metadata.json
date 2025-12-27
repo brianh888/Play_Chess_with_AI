@@ -1,0 +1,5 @@
+{
+  "name": "Grandmaster AI Chess",
+  "description": "A sophisticated 3D-styled chess experience featuring drag-and-drop mechanics, customizable difficulty levels, and an advanced AI opponent powered by Gemini 3 Pro.",
+  "requestFramePermissions": []
+}

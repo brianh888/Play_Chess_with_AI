@@ -7,24 +7,30 @@ export const ROWS = ['8', '7', '6', '5', '4', '3', '2', '1'];
 const PieceBase = ({ color, children, id }: { color: 'w' | 'b', children?: React.ReactNode, id: string }) => (
   <svg viewBox="0 0 45 45" className="w-full h-full">
     <defs>
-      <linearGradient id={`grad-${id}`} x1="0%" x2="100%" y1="0%" y2="100%">
+      <linearGradient id={`grad-${id}`} x1="20%" x2="80%" y1="0%" y2="100%">
         {color === 'w' ? (
           <>
             <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="60%" stopColor="#f8fafc" />
+            <stop offset="70%" stopColor="#e2e8f0" />
             <stop offset="100%" stopColor="#94a3b8" />
           </>
         ) : (
           <>
-            <stop offset="0%" stopColor="#64748b" />
+            <stop offset="0%" stopColor="#475569" />
             <stop offset="40%" stopColor="#1e293b" />
             <stop offset="100%" stopColor="#020617" />
           </>
         )}
       </linearGradient>
-      <filter id={`glow-${id}`}>
-        <feGaussianBlur stdDeviation="0.5" result="blur" />
-        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      
+      {/* Specular highlight for 3D effect */}
+      <linearGradient id={`shine-${id}`} x1="0%" x2="100%" y1="0%" y2="100%">
+        <stop offset="0%" stopColor="white" stopOpacity="0.4" />
+        <stop offset="50%" stopColor="white" stopOpacity="0" />
+      </linearGradient>
+
+      <filter id={`shadow-${id}`}>
+        <feDropShadow dx="0" dy="1.5" stdDeviation="1" floodOpacity="0.5"/>
       </filter>
     </defs>
     <g 
@@ -33,9 +39,13 @@ const PieceBase = ({ color, children, id }: { color: 'w' | 'b', children?: React
       strokeWidth="1.2" 
       strokeLinecap="round" 
       strokeLinejoin="round"
-      style={{ filter: `url(#glow-${id})` }}
+      filter={`url(#shadow-${id})`}
     >
       {children}
+      {/* Reflection layer */}
+      <g opacity="0.4" pointerEvents="none">
+         {children}
+      </g>
     </g>
   </svg>
 );

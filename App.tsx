@@ -34,6 +34,7 @@ const App: React.FC = () => {
     const currentAttempt = ++aiMoveAttemptRef.current;
 
     try {
+      // Direct call - relies on SDK guidelines for key handling
       const moveSan = await getGeminiMove(game.getFen(), difficulty);
       
       if (currentAttempt !== aiMoveAttemptRef.current) return;
@@ -53,11 +54,11 @@ const App: React.FC = () => {
       const upperMsg = errMsg.toUpperCase();
       
       if (upperMsg.includes("API_KEY") || upperMsg.includes("KEY") || upperMsg.includes("401")) {
-        setError("API Key missing or invalid. Please check your .env file and RESTART your dev server.");
+        setError("API Key configuration error. Ensure your .env is correct and restart the server.");
       } else if (upperMsg.includes("429")) {
-        setError("API rate limit exceeded. Please wait a moment.");
+        setError("API rate limit reached. Please wait a moment.");
       } else {
-        setError(`AI Error: ${errMsg || "Failed to fetch move"}`);
+        setError(`AI Error: ${errMsg || "An unexpected error occurred."}`);
       }
     } finally {
       setIsAiThinking(false);
@@ -79,12 +80,7 @@ const App: React.FC = () => {
       }
       setAdvice(hint);
     } catch (err: any) {
-      const errMsg = err.message || "";
-      if (errMsg.toUpperCase().includes("API_KEY")) {
-        setError("API Key error. Ensure .env is set and the server was restarted.");
-      } else {
-        setError("AI Strategist is temporarily unavailable.");
-      }
+      setError("AI Strategy service is currently busy.");
     } finally {
       setIsFetchingAdvice(false);
     }
@@ -139,56 +135,56 @@ const App: React.FC = () => {
   if (!isGameStarted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 p-6 text-slate-100">
-        <div className="bg-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 text-center">
-          <h1 className="text-4xl font-bold mb-6 tracking-tight">Grandmaster AI</h1>
-          <p className="text-slate-400 mb-8">Play chess against a world-class AI with real-time strategic advice.</p>
+        <div className="bg-slate-800/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl max-w-md w-full border border-slate-700/50 text-center">
+          <h1 className="text-5xl font-black mb-6 tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Grandmaster AI</h1>
+          <p className="text-slate-400 mb-10 text-lg">Challenge the world's most advanced AI in a premium 3D chess arena.</p>
           
-          <div className="space-y-4 mb-8">
-            <div className="flex justify-between items-center p-4 bg-slate-700 rounded-xl">
-              <span className="text-slate-200 font-semibold">Play As</span>
-              <div className="flex bg-slate-600 rounded-lg p-1">
+          <div className="space-y-4 mb-10">
+            <div className="flex justify-between items-center p-5 bg-slate-700/50 rounded-2xl border border-white/5">
+              <span className="text-slate-200 font-bold">Play As</span>
+              <div className="flex bg-slate-900/50 rounded-xl p-1.5 border border-white/5">
                 <button 
                   onClick={() => setPlayerColor('w')}
-                  className={`px-4 py-2 rounded-md transition-all ${playerColor === 'w' ? 'bg-white text-slate-900 shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  className={`px-5 py-2.5 rounded-lg transition-all font-bold ${playerColor === 'w' ? 'bg-white text-slate-900 shadow-xl' : 'text-slate-500 hover:text-white'}`}
                 >
                   White
                 </button>
                 <button 
                   onClick={() => setPlayerColor('b')}
-                  className={`px-4 py-2 rounded-md transition-all ${playerColor === 'b' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                  className={`px-5 py-2.5 rounded-lg transition-all font-bold ${playerColor === 'b' ? 'bg-slate-700 text-white shadow-xl' : 'text-slate-500 hover:text-white'}`}
                 >
                   Black
                 </button>
               </div>
             </div>
 
-            <div className="flex justify-between items-center p-4 bg-slate-700 rounded-xl">
-              <span className="text-slate-200 font-semibold">Difficulty</span>
+            <div className="flex justify-between items-center p-5 bg-slate-700/50 rounded-2xl border border-white/5">
+              <span className="text-slate-200 font-bold">Challenge Level</span>
               <button 
                 onClick={toggleDifficulty}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors font-medium"
+                className="flex items-center gap-2.5 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-indigo-500/20 font-bold"
               >
-                {difficulty === Difficulty.BEGINNER ? <User size={18} /> : <BrainCircuit size={18} />}
+                {difficulty === Difficulty.BEGINNER ? <User size={20} /> : <BrainCircuit size={20} />}
                 {difficulty}
               </button>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             <button 
               onClick={() => {
                 setIsGameStarted(true);
                 forceUpdate();
               }}
-              className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95"
+              className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-xl shadow-xl shadow-emerald-500/20 transition-all active:scale-95"
             >
-              Start Game
+              Enter Arena
             </button>
             <button 
               onClick={() => setShowShowcase(true)}
-              className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all"
+              className="w-full py-4 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all border border-white/5"
             >
-              <Presentation size={18} /> Feature Showcase
+              <Presentation size={20} /> Feature Showcase
             </button>
           </div>
         </div>
@@ -199,75 +195,84 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col lg:flex-row p-4 md:p-8 gap-8 items-center justify-center overflow-y-auto">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col lg:flex-row p-4 md:p-8 gap-8 items-center justify-center overflow-y-auto">
       
+      {/* Sidebar Left: Game Status */}
       <div className="w-full lg:w-1/4 flex flex-col gap-6 order-2 lg:order-1">
-        <div className="bg-slate-800/50 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-xl">
-          <div className="flex items-center gap-3 mb-6">
-            <Trophy className="text-yellow-500" />
-            <h2 className="text-xl font-bold">Game Status</h2>
+        <div className="bg-slate-900/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="p-3 bg-yellow-500/10 rounded-2xl">
+              <Trophy className="text-yellow-500" size={28} />
+            </div>
+            <h2 className="text-2xl font-black tracking-tight">Match Info</h2>
           </div>
           
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400">Current Turn</span>
-              <span className={`px-3 py-1 rounded-full text-sm font-bold shadow-inner ${game.getTurn() === 'w' ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}`}>
+          <div className="space-y-6">
+            <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl">
+              <span className="text-slate-400 font-medium">Turn</span>
+              <span className={`px-4 py-1.5 rounded-xl text-sm font-black shadow-2xl border border-white/10 ${game.getTurn() === 'w' ? 'bg-white text-slate-900' : 'bg-slate-800 text-white'}`}>
                 {game.getTurn() === 'w' ? 'White' : 'Black'}
               </span>
             </div>
             
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400">AI Opponent</span>
-              <span className="text-indigo-400 font-medium">{difficulty}</span>
+            <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl">
+              <span className="text-slate-400 font-medium">AI Level</span>
+              <span className="text-indigo-400 font-black">{difficulty}</span>
             </div>
 
             {isAiThinking && (
-              <div className="flex items-center gap-3 py-2 text-indigo-400">
-                <BrainCircuit size={20} className="animate-spin-slow" />
-                <span className="text-sm font-semibold tracking-wide animate-pulse">AI is thinking...</span>
+              <div className="flex items-center gap-4 p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
+                <BrainCircuit size={24} className="text-indigo-400 animate-spin-slow" />
+                <span className="text-sm font-black text-indigo-300 tracking-wider animate-pulse uppercase">AI Strategizing...</span>
               </div>
             )}
 
             {game.isCheck() && !isGameOver && (
-              <div className="bg-red-900/40 border border-red-500/50 text-red-200 px-4 py-2 rounded-lg text-center font-bold animate-pulse">
-                CHECK!
+              <div className="bg-red-500/20 border border-red-500/40 text-red-200 px-4 py-3 rounded-2xl text-center font-black tracking-[0.2em] animate-pulse">
+                CHECK
               </div>
             )}
           </div>
         </div>
 
-        <div className="bg-slate-800/50 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-xl flex-1 max-h-[300px] overflow-hidden flex flex-col">
-          <div className="flex items-center gap-3 mb-4">
-            <RotateCcw size={20} className="text-slate-400" />
-            <h2 className="text-xl font-bold">Move History</h2>
+        <div className="bg-slate-900/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl flex-1 max-h-[350px] overflow-hidden flex flex-col">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="p-3 bg-slate-500/10 rounded-2xl">
+              <RotateCcw size={24} className="text-slate-400" />
+            </div>
+            <h2 className="text-2xl font-black tracking-tight">Ledger</h2>
           </div>
-          <div className="overflow-y-auto space-y-1 flex-1 pr-2">
+          <div className="overflow-y-auto space-y-2 flex-1 pr-3 custom-scrollbar">
             {game.getHistory().map((move, i) => (
-              <div key={i} className="flex gap-4 py-1.5 border-b border-slate-700/30 text-sm font-mono">
-                <span className="text-slate-500 w-6">{Math.floor(i / 2) + 1}.</span>
-                <span className={`flex-1 ${i % 2 === 0 ? 'text-slate-100' : 'text-slate-400'}`}>{move}</span>
+              <div key={i} className="flex gap-4 py-2.5 border-b border-white/5 text-sm font-mono items-center">
+                <span className="text-slate-600 w-8 font-bold text-right">{Math.floor(i / 2) + 1}.</span>
+                <span className={`px-3 py-1 rounded-lg ${i % 2 === 0 ? 'bg-white/10 text-white' : 'text-slate-400 font-medium'}`}>{move}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center order-1 lg:order-2 w-full max-w-[600px]">
+      {/* Main: Chess Board */}
+      <div className="flex-1 flex flex-col items-center justify-center order-1 lg:order-2 w-full max-w-[650px]">
         {isGameOver && (
-          <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-6">
-            <div className="bg-[#1e293b] p-10 rounded-[40px] border border-white/5 shadow-2xl text-center max-w-sm w-full animate-in zoom-in-95 duration-300">
-              <h2 className="text-4xl font-bold text-white mb-2">Game Over</h2>
-              <p className="text-slate-400 text-xl mb-10">
-                {winner === 'draw' ? "It's a Draw!" : `${winner === 'w' ? 'White' : 'Black'} wins!`}
+          <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-2xl flex items-center justify-center p-6 animate-in fade-in duration-500">
+            <div className="bg-[#1e293b] p-12 rounded-[48px] border border-white/10 shadow-3xl text-center max-w-md w-full scale-in-center">
+              <div className="bg-yellow-500/20 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 border border-yellow-500/30">
+                <Trophy size={48} className="text-yellow-500" />
+              </div>
+              <h2 className="text-5xl font-black text-white mb-4 tracking-tight">Victory!</h2>
+              <p className="text-slate-400 text-2xl mb-12 font-medium">
+                {winner === 'draw' ? "Stalemate" : `${winner === 'w' ? 'White' : 'Black'} has conquered.`}
               </p>
-              <button onClick={resetGame} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-lg transition-all shadow-lg hover:shadow-indigo-500/30 active:scale-95">
-                Play Again
+              <button onClick={resetGame} className="w-full py-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-3xl font-black text-xl transition-all shadow-2xl shadow-indigo-500/40 active:scale-95">
+                New Conquest
               </button>
             </div>
           </div>
         )}
 
-        <div className="relative w-full">
+        <div className="relative w-full p-4">
            <Board 
             gameState={game} 
             playerColor={playerColor} 
@@ -277,83 +282,86 @@ const App: React.FC = () => {
           />
           
           {error && (
-            <div className="mt-8 flex flex-col items-center gap-3">
-              <div className="flex flex-col items-center gap-2 text-red-400 bg-red-900/20 py-4 px-6 rounded-2xl border border-red-500/30 backdrop-blur-sm shadow-xl max-w-sm">
-                <div className="flex items-center gap-2 font-bold">
-                  <AlertCircle size={20} />
-                  <span>Connectivity Issue</span>
+            <div className="mt-12 animate-in slide-in-from-top-4 duration-500">
+              <div className="flex flex-col items-center gap-4 bg-red-500/10 py-6 px-8 rounded-3xl border border-red-500/30 backdrop-blur-md shadow-2xl max-w-md mx-auto">
+                <div className="flex items-center gap-3 text-red-400 font-black text-lg">
+                  <AlertCircle size={24} />
+                  <span>Connectivity Error</span>
                 </div>
-                <p className="text-center text-xs leading-relaxed opacity-90">
+                <p className="text-center text-sm font-medium leading-relaxed text-red-100/80">
                   {error}
                 </p>
-                <div className="mt-2 flex gap-3">
-                  <button 
-                    onClick={() => handleAiMove()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-xs font-bold transition-all border border-red-500/20"
-                  >
-                    <RefreshCw size={12} /> Retry
-                  </button>
-                </div>
+                <button 
+                  onClick={() => handleAiMove()}
+                  className="flex items-center gap-2.5 px-6 py-2 bg-red-500 hover:bg-red-600 rounded-xl text-sm font-black text-white transition-all active:scale-95 shadow-lg shadow-red-500/30"
+                >
+                  <RefreshCw size={16} /> Re-establish Link
+                </button>
               </div>
             </div>
           )}
         </div>
       </div>
 
+      {/* Sidebar Right: Controls & AI Strategist */}
       <div className="w-full lg:w-1/4 flex flex-col gap-6 order-3">
-        <div className="bg-slate-800/50 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-xl overflow-hidden relative">
-          <div className="flex items-center gap-3 mb-4">
-            <Lightbulb className="text-yellow-400" />
-            <h2 className="text-xl font-bold">AI Strategist</h2>
+        <div className="bg-slate-900/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="p-3 bg-yellow-400/10 rounded-2xl">
+              <Lightbulb className="text-yellow-400" size={28} />
+            </div>
+            <h2 className="text-2xl font-black tracking-tight">AI Advisor</h2>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-6">
             {advice && (
-              <div className="p-4 bg-slate-900/80 rounded-xl border border-emerald-500/30 shadow-inner">
-                <span className="text-emerald-400 font-bold block mb-2 text-sm uppercase tracking-wider">Recommended: {advice.move}</span>
-                <p className="text-slate-300 text-sm italic leading-relaxed">"{advice.explanation}"</p>
+              <div className="p-5 bg-slate-950/80 rounded-2xl border border-emerald-500/30 shadow-inner animate-in fade-in zoom-in-95 duration-500">
+                <span className="text-emerald-400 font-black block mb-3 text-xs uppercase tracking-[0.2em]">Optimal Line: {advice.move}</span>
+                <p className="text-slate-200 text-sm font-medium italic leading-relaxed">"{advice.explanation}"</p>
               </div>
             )}
             <button 
               onClick={handleGetAdvice}
               disabled={isFetchingAdvice || isAiThinking || game.getTurn() !== playerColor}
-              className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
+              className={`w-full py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all ${
                 isFetchingAdvice 
-                  ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 active:scale-95'
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5'
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-500/30 active:scale-95'
               }`}
             >
-              {isFetchingAdvice ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={18} />}
-              {isFetchingAdvice ? 'Analyzing...' : 'Request Strategy'}
+              {isFetchingAdvice ? <Loader2 className="animate-spin" size={24} /> : <Sparkles size={22} />}
+              {isFetchingAdvice ? 'Consulting...' : 'Request Insight'}
             </button>
           </div>
         </div>
 
-        <div className="bg-slate-800/50 backdrop-blur-md p-6 rounded-2xl border border-slate-700/50 shadow-xl">
-          <div className="flex items-center gap-3 mb-6">
-            <Settings className="text-slate-400" />
-            <h2 className="text-xl font-bold">Controls</h2>
+        <div className="bg-slate-900/60 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="p-3 bg-slate-500/10 rounded-2xl">
+              <Settings className="text-slate-300" size={28} />
+            </div>
+            <h2 className="text-2xl font-black tracking-tight">Commands</h2>
           </div>
-          <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <button 
                 onClick={handleUndo}
                 disabled={isAiThinking || game.getHistory().length === 0}
-                className="py-3 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all active:scale-95"
+                className="py-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-all active:scale-95 border border-white/5"
               >
-                <Undo2 size={18} /> Undo
+                <Undo2 size={20} /> Undo
               </button>
               <button 
                 onClick={resetGame}
-                className="py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all active:scale-95"
+                className="py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-all active:scale-95 border border-white/5"
               >
-                <RotateCcw size={18} /> Reset
+                <RotateCcw size={20} /> Reset
               </button>
             </div>
             <button 
               onClick={toggleDifficulty}
-              className="w-full py-3 bg-indigo-900/30 border border-indigo-500/30 text-indigo-100 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-indigo-900/50 transition-colors"
+              className="w-full py-4 bg-indigo-900/40 border border-indigo-500/40 text-indigo-100 rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-indigo-900/60 transition-all shadow-lg"
             >
-              <BrainCircuit size={18} /> Mode: {difficulty}
+              <BrainCircuit size={20} /> Mode: {difficulty}
             </button>
           </div>
         </div>

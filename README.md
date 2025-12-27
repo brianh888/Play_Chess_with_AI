@@ -12,6 +12,7 @@ A sophisticated 3D-styled chess experience featuring drag-and-drop mechanics and
 - **AI Advisor**: Ask the Grandmaster for tactical advice and move explanations during your turn.
 - **Move History**: Full standard algebraic notation ledger.
 - **Responsive Design**: Works on desktop and tablets.
+- **Presentation deck**: Take a look at the deck **Play_Chess_with_AI_deck** to get a feel of the gameplay and key features!
 
 ## Prerequisites
 
@@ -22,8 +23,8 @@ A sophisticated 3D-styled chess experience featuring drag-and-drop mechanics and
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/grandmaster-ai-chess.git
-   cd grandmaster-ai-chess
+   git clone https://github.com/YOUR_USERNAME/Play_Chess_with_AI.git
+   cd Play_Chess_with_AI
    ```
 
 2. **Install dependencies**
